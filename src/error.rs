@@ -21,11 +21,19 @@ impl Error {
 #[derive(Debug)]
 pub enum ErrorType {
     /// There are too many closing parenthesis of said variant
-    TooManyClosings(ScopeVariant),
+    UnexpectedClosing(ScopeVariant),
     /// There is an unclosed command argument of said parenthesis variant
     UnclosedArgument(ScopeVariant),
     /// There is an unclosed scope of said parenthesis variant
     UnclosedScope(ScopeVariant),
+    /// Missing environment label
+    NoEnvironmentLabel,
+    /// There are too many `\end` of said environment
+    UnexpectedEnd(String),
+    /// The environment is unclosed with a `\end` command
+    UnclosedEnvironment(String),
+    /// There are more than one argument at a `\end` command
+    TooManyArgsEnd,
 }
 
 impl Display for Error {

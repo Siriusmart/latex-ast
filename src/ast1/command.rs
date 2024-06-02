@@ -19,6 +19,26 @@ impl Command {
     pub fn new(label: String, arguments: Vec<(String, Scope)>) -> Self {
         Self { label, arguments }
     }
+
+    pub fn label(&self) -> &String {
+        &self.label
+    }
+
+    pub fn arguments(&self) -> &Vec<(String, Scope)> {
+        &self.arguments
+    }
+
+    pub fn label_owned(self) -> String {
+        self.label
+    }
+
+    pub fn arguments_owned(self) -> Vec<(String, Scope)> {
+        self.arguments
+    }
+
+    pub fn decompose(self) -> (String, Vec<(String, Scope)>) {
+        (self.label, self.arguments)
+    }
 }
 
 impl Display for Command {

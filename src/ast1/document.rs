@@ -1,27 +1,64 @@
 use std::{fmt::Display, str::FromStr};
 
-use crate::ast1::{
-    chunkvariant::ChunkVariant, command::Command, scope::Scope, scopevariant::ScopeVariant,
+use crate::{
+    ast1::{
+        chunkvariant::ChunkVariant, command::Command, scope::Scope, scopevariant::ScopeVariant,
+    },
+    ast2,
 };
 
-use super::chunk::Chunk;
+use super::{chunk::Chunk, into_chunks::IntoChunks};
 
 /// Main struct for stage 1 AST
 ///
 /// Display `{}` reconstructs the original document
+#[derive(Default, Clone)]
 #[cfg_attr(feature = "debug", derive(Debug))]
 #[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
 pub struct Document(Vec<Chunk>);
 
 impl Document {
-    pub fn chunks(self) -> Vec<Chunk> {
+    /// Return all the chunks within the document
+    pub fn chunks(&self) -> &Vec<Chunk> {
+        &self.0
+    }
+
+    /// Return all the owned chunks within the document
+    pub fn chunks_owned(self) -> Vec<Chunk> {
         self.0
+    }
+
+    /// Create new document from chunks
+    pub fn new(chunks: Vec<Chunk>) -> Self {
+        Self(chunks)
+    }
+
+    /// Push new chunks into document
+    pub fn push(&mut self, mut chunks: Vec<Chunk>) {
+        self.0.append(&mut chunks)
+    }
+
+    /// Push new chunks into document with structs that implement `ast1::IntoChunks`
+    pub fn push_into<T: IntoChunks>(&mut self, original: T) {
+        self.push(original.into_chunks())
     }
 }
 
 impl Display for Document {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.0.iter().map(ToString::to_string).collect::<String>())
+    }
+}
+
+impl From<ast2::Document> for Document {
+    fn from(value: ast2::Document) -> Self {
+        let mut out = Self::default();
+
+        for chunk in value.chunks_owned() {
+            out.push_into(chunk)
+        }
+
+        out
     }
 }
 
@@ -149,7 +186,7 @@ impl FromStr for Document {
                             e.line += buffer_line_no - 1;
                             e
                         })?
-                        .chunks()
+                        .chunks_owned()
                 };
             }
 
@@ -207,26 +244,25 @@ impl FromStr for Document {
         }
 
         for c in s.chars() {
-            if c == '\n' {
-                comment = false;
-                line_no += 1;
-            }
-
-            if comment {
-                continue;
-            }
-
-            if c == '%' && !escaped {
-                comment = true;
-                continue;
+            match c {
+                '\n' => {
+                    comment = false;
+                    line_no += 1
+                }
+                '%' if !escaped => {
+                    comment = true;
+                    continue;
+                }
+                '\\' if !escaped => {
+                    escaped = true;
+                    continue;
+                }
+                _ if comment => continue,
+                _ => {}
             }
 
             match &mut buffer {
                 Buffer::Text { .. } => match c {
-                    '\\' if !escaped => {
-                        escaped = true;
-                        continue;
-                    }
                     c if escaped => {
                         flush!();
                         buffer = Buffer::command();
@@ -239,6 +275,10 @@ impl FromStr for Document {
                     c => buffer.push(c),
                 },
                 Buffer::Scope { depth, variant, .. } => match c {
+                    c if *depth != 0 && escaped => {
+                        buffer.push('\\');
+                        buffer.push(c);
+                    }
                     c if variant.open() == c => {
                         *depth += 1;
                         buffer.push(c)
@@ -264,21 +304,29 @@ impl FromStr for Document {
                         buffer.push_scope(ScopeVariant::from_opening(c))
                     }
                     c if *depth == 0 && c.is_ascii_whitespace() => trailing.push(c),
-                    c if *depth == 0 && !trailing.is_empty() && escaped => {
+                    c if *depth == 0 && escaped => {
                         let trailing = trailing.clone();
                         flush!();
-                        buffer = Buffer::text();
-                        buffer.push_str(&trailing);
 
-                        flush(
-                            &mut buffer,
-                            buffer_line_no - trailing.chars().filter(|c| *c == '\n').count() as u32,
-                            &mut chunks,
-                        )?;
+                        if !trailing.is_empty() {
+                            buffer = Buffer::text();
+                            buffer.push_str(&trailing);
+
+                            flush(
+                                &mut buffer,
+                                buffer_line_no
+                                    - trailing.chars().filter(|c| *c == '\n').count() as u32,
+                                &mut chunks,
+                            )?;
+                        }
 
                         buffer_line_no = line_no;
 
                         buffer = Buffer::command();
+                        buffer.push(c);
+                    }
+                    c if *depth != 0 && escaped => {
+                        buffer.push('\\');
                         buffer.push(c);
                     }
                     c if *depth == 0 && !trailing.is_empty() => {
@@ -293,6 +341,12 @@ impl FromStr for Document {
                     }
                     c if *depth != 0 && scopes.last().unwrap().1.open() == c => *depth += 1,
                     c if *depth != 0 && scopes.last().unwrap().1.close() == c => *depth -= 1,
+                    c if *depth == 0 && ScopeVariant::is_closing(c) => {
+                        return Err(crate::Error::new(
+                            line_no,
+                            crate::ErrorType::UnexpectedClosing(ScopeVariant::from_closing(c)),
+                        ))
+                    }
                     c => buffer.push(c),
                 },
             }

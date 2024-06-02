@@ -21,7 +21,7 @@ Bye!
 "#
     .trim();
 
-    let ast = Document::from_str(content).unwrap().chunks();
+    let ast = Document::from_str(content).unwrap();
 
     let expected = vec![
         Chunk::new(1, ChunkVariant::Text("Hello world\n\n".to_string())),
@@ -92,5 +92,6 @@ Bye!
         Chunk::new(11, ChunkVariant::Text("\n\nBye!".to_string())),
     ];
 
-    assert_eq!(dbg!(ast), dbg!(expected))
+    assert_eq!(dbg!(ast.chunks()), dbg!(&expected));
+    assert_eq!(dbg!(ast.to_string()), content.to_string());
 }
