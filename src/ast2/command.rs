@@ -7,6 +7,7 @@ use super::Scope;
 #[cfg_attr(feature = "debug", derive(Debug))]
 #[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
 pub struct Command {
+    /// Name of the command
     label: String,
     /// Stored as `Vec<(Preceding string, scope content)>`
     ///
@@ -28,9 +29,34 @@ impl Command {
 }
 
 impl Command {
-    /// Constructs a new Command from label and arguments
+    /// Construct new Command
     pub fn new(label: String, arguments: Vec<(String, Scope)>) -> Self {
         Self { label, arguments }
+    }
+
+    /// Return label of the command
+    pub fn label(&self) -> &String {
+        &self.label
+    }
+
+    /// Return argument of the command
+    pub fn arguments(&self) -> &Vec<(String, Scope)> {
+        &self.arguments
+    }
+
+    /// Return owned label of the command
+    pub fn label_owned(self) -> String {
+        self.label
+    }
+
+    /// Return owned arguments of the command
+    pub fn arguments_owned(self) -> Vec<(String, Scope)> {
+        self.arguments
+    }
+
+    /// Returns all fields of this struct
+    pub fn decompose(self) -> (String, Vec<(String, Scope)>) {
+        (self.label, self.arguments)
     }
 }
 

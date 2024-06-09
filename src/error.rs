@@ -34,6 +34,14 @@ pub enum ErrorType {
     UnclosedEnvironment(String),
     /// There are more than one argument at a `\end` command
     TooManyArgsEnd,
+    /// There are more than 1 argument for documentclass
+    TooManyArgsDocumentClass,
+    /// Document class is called more than once
+    DoubleDocumentClass,
+    /// Maths block ended before it is begin
+    UnexpectedMathsEnd,
+    /// Maths block is unclosed
+    UnclosedMaths,
 }
 
 impl Display for Error {

@@ -1,13 +1,14 @@
-use std::fmt::Display;
+use crate::ast2;
 
-use super::{chunk::Chunk, scopevariant::ScopeVariant};
+use super::{Chunk, MathsBlock, Paragraph, ScopeVariant};
 
 /// A scoped block
 ///
 /// Note that is cannot exist independently immediately following a command without
 /// any nonwhitespace character in between
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone)]
 #[cfg_attr(feature = "debug", derive(Debug))]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
 pub struct Scope {
     chunks: Vec<Chunk>,
     variant: ScopeVariant,
@@ -40,17 +41,15 @@ impl Scope {
     }
 }
 
-impl Display for Scope {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!(
-            "{}{}{}",
-            self.variant.open(),
-            &self
-                .chunks
-                .iter()
-                .map(ToString::to_string)
-                .collect::<String>(),
-            self.variant.close()
+impl TryFrom<ast2::Scope> for Scope {
+    type Error = crate::Error;
+
+    fn try_from(value: ast2::Scope) -> Result<Self, Self::Error> {
+        let (chunks, variant) = value.decompose();
+
+        Ok(Self::new(
+            Paragraph::from_chunks(MathsBlock::from_chunks(chunks)?),
+            variant.into(),
         ))
     }
 }

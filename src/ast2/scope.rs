@@ -28,9 +28,29 @@ impl Scope {
 }
 
 impl Scope {
-    /// Constructs a new Scope from content and scope variant
+    /// Create new scope from its content and the scope variant
     pub fn new(chunks: Vec<Chunk>, variant: ScopeVariant) -> Self {
         Self { chunks, variant }
+    }
+
+    /// Returns all chunks within
+    pub fn chunks(&self) -> &Vec<Chunk> {
+        &self.chunks
+    }
+
+    /// Returns all owned chunks within
+    pub fn chunks_owned(self) -> Vec<Chunk> {
+        self.chunks
+    }
+
+    /// Returns the scope variant
+    pub fn variant(&self) -> ScopeVariant {
+        self.variant
+    }
+
+    /// Returns all fields of this struct
+    pub fn decompose(self) -> (Vec<Chunk>, ScopeVariant) {
+        (self.chunks, self.variant)
     }
 }
 

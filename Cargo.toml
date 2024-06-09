@@ -1,6 +1,6 @@
 [package]
 name = "latex-ast"
-version = "0.0.2"
+version = "0.0.3"
 authors = ["siriusmart"]
 edition = "2021"
 description = "AST parser for LaTeX, WIP."

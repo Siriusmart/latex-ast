@@ -1,7 +1,6 @@
-use std::fmt::Display;
-use std::fmt::Write;
+use crate::ast2;
 
-use super::scope::Scope;
+use super::Scope;
 
 /// Represents a command and its arguments
 #[derive(Clone)]
@@ -48,17 +47,18 @@ impl Command {
     }
 }
 
-impl Display for Command {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!(
-            "\\{}{}",
-            self.label,
-            self.arguments
-                .iter()
-                .fold(String::new(), |mut s, (scope, trailing)| {
-                    let _ = write!(s, "{scope}{trailing}");
-                    s
-                })
-        ))
+impl TryFrom<ast2::Command> for Command {
+    type Error = crate::Error;
+
+    fn try_from(value: ast2::Command) -> Result<Self, Self::Error> {
+        let (label, args) = value.decompose();
+
+        let mut args_new = Vec::with_capacity(args.len());
+
+        for (prec, scope) in args {
+            args_new.push((prec, scope.try_into()?));
+        }
+
+        Ok(Self::new(label, args_new))
     }
 }
