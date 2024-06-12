@@ -30,7 +30,7 @@ impl MathsBlock {
         enum MathsMode {
             SingleDollar(MathsVariant),
             DoubleDollar(MathsVariant),
-            DoubleClosing(MathsVariant),
+            DoubleClosing,
             None,
         }
 
@@ -43,16 +43,6 @@ impl MathsBlock {
 
         for chunk in chunks {
             let (line_no, variant) = chunk.decompose();
-
-            macro_rules! push {
-                ($x:expr) => {{
-                    if let MathsMode::DoubleClosing(var) = mode {
-                        mode = MathsMode::DoubleDollar(var)
-                    }
-
-                    out.push(Chunk::new(line_no, $x))
-                }};
-            }
 
             match variant {
                 ast2::ChunkVariant::Command(cmd)
@@ -100,7 +90,7 @@ impl MathsBlock {
                         buffer_line,
                         ChunkVariant::MathsBlock(Self::new(
                             MathsVariant::Brackets,
-                            MathsType::Outline,
+                            MathsType::Inline,
                             Self::from_chunks(std::mem::take(&mut buffer))?,
                         )),
                     ))
@@ -116,7 +106,7 @@ impl MathsBlock {
                         buffer_line,
                         ChunkVariant::MathsBlock(Self::new(
                             MathsVariant::Brackets,
-                            MathsType::Inline,
+                            MathsType::Outline,
                             Self::from_chunks(std::mem::take(&mut buffer))?,
                         )),
                     ))
@@ -134,18 +124,140 @@ impl MathsBlock {
                     depth -= 1
                 }
                 ast2::ChunkVariant::Scope(s) if mode == MathsMode::None => {
-                    push!(ChunkVariant::Scope(s.try_into()?))
+                    out.push(Chunk::new(line_no, ChunkVariant::Scope(s.try_into()?)));
                 }
                 ast2::ChunkVariant::Environment(env) if mode == MathsMode::None => {
-                    push!(ChunkVariant::Environment(env.try_into()?))
+                    out.push(Chunk::new(
+                        line_no,
+                        ChunkVariant::Environment(env.try_into()?),
+                    ));
                 }
                 ast2::ChunkVariant::Command(cmd) if mode == MathsMode::None => {
-                    push!(ChunkVariant::Command(cmd.try_into()?))
+                    out.push(Chunk::new(line_no, ChunkVariant::Command(cmd.try_into()?)));
                 }
-                ast2::ChunkVariant::Text(s) if mode == MathsMode::None => {
-                    push!(ChunkVariant::Text(s))
+                ast2::ChunkVariant::Text(s)
+                    if !matches!(
+                        mode,
+                        MathsMode::SingleDollar(MathsVariant::Brackets)
+                            | MathsMode::DoubleDollar(MathsVariant::Brackets)
+                    ) =>
+                {
+                    let mut cursor_line_no = line_no;
+                    let mut text_buffer = String::new();
+                    let mut text_buffer_line = 1;
+
+                    macro_rules! push_str {
+                        () => {
+                            if !text_buffer.is_empty() {
+                                out.push(Chunk::new(
+                                    text_buffer_line + line_no - 1,
+                                    ChunkVariant::Text(std::mem::take(&mut text_buffer)),
+                                ))
+                            }
+                        };
+                    }
+
+                    for c in s.chars() {
+                        if c == '\n' {
+                            cursor_line_no += 1
+                        }
+
+                        if c == '$' {
+                            match mode {
+                                MathsMode::None => {
+                                    push_str!();
+                                    mode = MathsMode::SingleDollar(MathsVariant::Dollars);
+                                    text_buffer_line = cursor_line_no;
+                                }
+                                MathsMode::SingleDollar(MathsVariant::Dollars)
+                                    if text_buffer.is_empty() && buffer.is_empty() =>
+                                {
+                                    mode = MathsMode::DoubleDollar(MathsVariant::Dollars)
+                                }
+                                MathsMode::DoubleDollar(MathsVariant::Dollars) => {
+                                    mode = MathsMode::DoubleClosing
+                                }
+                                MathsMode::DoubleClosing => {
+                                    mode = MathsMode::None;
+
+                                    if !text_buffer.is_empty() {
+                                        buffer.push(ast2::Chunk::new(
+                                            text_buffer_line,
+                                            ast2::ChunkVariant::Text(std::mem::take(
+                                                &mut text_buffer,
+                                            )),
+                                        ));
+                                    }
+
+                                    out.push(Chunk::new(
+                                        text_buffer_line,
+                                        ChunkVariant::MathsBlock(MathsBlock::new(
+                                            MathsVariant::Dollars,
+                                            MathsType::Outline,
+                                            Self::from_chunks(
+                                                std::mem::take(&mut buffer)
+                                                    .into_iter()
+                                                    .map(|mut chunk| {
+                                                        *chunk.line_no_mut() -=
+                                                            text_buffer_line - 1;
+                                                        chunk
+                                                    })
+                                                    .collect(),
+                                            )?,
+                                        )),
+                                    ))
+                                }
+                                MathsMode::SingleDollar(MathsVariant::Dollars) => {
+                                    mode = MathsMode::None;
+
+                                    if !text_buffer.is_empty() {
+                                        buffer.push(ast2::Chunk::new(
+                                            text_buffer_line,
+                                            ast2::ChunkVariant::Text(std::mem::take(
+                                                &mut text_buffer,
+                                            )),
+                                        ));
+                                    }
+
+                                    out.push(Chunk::new(
+                                        text_buffer_line,
+                                        ChunkVariant::MathsBlock(MathsBlock::new(
+                                            MathsVariant::Dollars,
+                                            MathsType::Inline,
+                                            Self::from_chunks(
+                                                std::mem::take(&mut buffer)
+                                                    .into_iter()
+                                                    .map(|mut chunk| {
+                                                        *chunk.line_no_mut() -=
+                                                            text_buffer_line - 1;
+                                                        chunk
+                                                    })
+                                                    .collect(),
+                                            )?,
+                                        )),
+                                    ))
+                                }
+                                MathsMode::SingleDollar(MathsVariant::Brackets) | MathsMode::DoubleDollar(MathsVariant::Brackets) => {}
+                            }
+                        } else {
+                            text_buffer.push(c)
+                        }
+                    }
+
+                    if !text_buffer.is_empty() {
+                        if mode == MathsMode::None {
+                            out.push(Chunk::new(
+                                text_buffer_line + line_no - 1,
+                                ChunkVariant::Text(text_buffer),
+                            ))
+                        } else {
+                            buffer.push(ast2::Chunk::new(
+                                text_buffer_line + line_no - 1,
+                                ast2::ChunkVariant::Text(text_buffer),
+                            ))
+                        }
+                    }
                 }
-                ast2::ChunkVariant::Text(_) => todo!(),
                 _ => buffer.push(ast2::Chunk::new(line_no, variant)),
             }
         }

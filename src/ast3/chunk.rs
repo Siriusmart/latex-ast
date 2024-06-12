@@ -8,19 +8,6 @@ pub struct Chunk {
     variant: ChunkVariant,
 }
 
-// impl TryFrom<ast2::Chunk> for Chunk {
-//     type Error = crate::Error;
-//
-//     fn try_from(value: ast2::Chunk) -> Result<Self, Self::Error> {
-//         let (line_no, variant) = value.decompose();
-//
-//         Ok(match variant {
-//             ast2::ChunkVariant::Scope(scope) => Self::new(line_no, ChunkVariant::Scope(scope.try_into()?)),
-//             ast2::ChunkVariant::Command()
-//         })
-//     }
-// }
-
 impl Chunk {
     /// Constructs new Chunk
     pub fn new(line_no: u32, variant: ChunkVariant) -> Self {

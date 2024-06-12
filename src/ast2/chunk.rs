@@ -100,6 +100,11 @@ impl Chunk {
         self.line_no
     }
 
+    /// Returns the relative line number of current chunk (mut)
+    pub fn line_no_mut(&mut self) -> &mut u32 {
+        &mut self.line_no
+    }
+
     /// Returns the variant of current chunk
     pub fn variant(&self) -> &ChunkVariant {
         &self.variant

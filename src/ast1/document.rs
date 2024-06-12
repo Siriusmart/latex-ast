@@ -89,6 +89,13 @@ enum Buffer {
 }
 
 impl Buffer {
+    pub fn no_scope(&self) -> bool {
+        match self {
+            Self::Command { scopes, .. } => scopes.is_empty(),
+            _ => unreachable!("not a command")
+        }
+    }
+
     pub fn scope(variant: ScopeVariant) -> Self {
         Self::Scope {
             content: String::new(),
@@ -267,6 +274,11 @@ impl FromStr for Document {
                         flush!();
                         buffer = Buffer::command();
                         buffer.push(c);
+
+                        if !c.is_ascii_alphabetic() {
+                            flush!();
+                            buffer = Buffer::text();
+                        }
                     }
                     c if ScopeVariant::is_opening(c) => {
                         flush!();
@@ -324,6 +336,10 @@ impl FromStr for Document {
 
                         buffer = Buffer::command();
                         buffer.push(c);
+                        if !c.is_ascii_alphabetic() {
+                            flush!();
+                            buffer = Buffer::text();
+                        }
                     }
                     c if *depth != 0 && escaped => {
                         buffer.push('\\');
@@ -346,6 +362,11 @@ impl FromStr for Document {
                             line_no,
                             crate::ErrorType::UnexpectedClosing(ScopeVariant::from_closing(c)),
                         ))
+                    }
+                    c if *depth == 0 && !buffer.no_scope() => {
+                        flush!();
+                        buffer = Buffer::text();
+                        buffer.push(c);
                     }
                     c => buffer.push(c),
                 },

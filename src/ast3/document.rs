@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, str::FromStr};
 
 use crate::{
     ast2,
@@ -7,7 +7,9 @@ use crate::{
 
 use super::{Chunk, Scope};
 
-#[derive(Default)]
+#[derive(Default, Clone)]
+#[cfg_attr(feature = "debug", derive(Debug))]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
 pub struct Document {
     documentclass: Option<String>,
     documentoptions: HashMap<String, Option<String>>,
@@ -79,7 +81,7 @@ impl TryFrom<ast2::Document> for Document {
                     construct.body_end_prec = end;
                     cursor = CursorState::Trailing;
                 }
-                ast2::ChunkVariant::Command(cmd)
+                ast2::ChunkVariant::Command(ref cmd)
                     if cmd.label().as_str() == "documentclass"
                         && cursor == CursorState::Preamable =>
                 {
@@ -89,8 +91,7 @@ impl TryFrom<ast2::Document> for Document {
                             crate::ErrorType::DoubleDocumentClass,
                         ));
                     }
-
-                    for (_, scope) in cmd.decompose().1 {
+                    for (_, scope) in cmd.clone().decompose().1 {
                         match scope.variant() {
                             ast2::ScopeVariant::Curly if construct.documentclass.is_some() => {
                                 return Err(crate::Error::new(
@@ -121,6 +122,7 @@ impl TryFrom<ast2::Document> for Document {
                             }
                         }
                     }
+                    preamable.push(ast2::Chunk::new(line_no, variant))
                 }
                 _ if cursor == CursorState::Preamable => {
                     preamable.push(ast2::Chunk::new(line_no, variant))
@@ -133,5 +135,13 @@ impl TryFrom<ast2::Document> for Document {
         construct.trailing = Paragraph::from_chunks(MathsBlock::from_chunks(trailing)?);
 
         Ok(construct)
+    }
+}
+
+impl FromStr for Document {
+    type Err = crate::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        ast2::Document::from_str(s)?.try_into()
     }
 }
