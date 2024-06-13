@@ -92,7 +92,7 @@ impl Buffer {
     pub fn no_scope(&self) -> bool {
         match self {
             Self::Command { scopes, .. } => scopes.is_empty(),
-            _ => unreachable!("not a command")
+            _ => unreachable!("not a command"),
         }
     }
 
@@ -188,8 +188,7 @@ impl FromStr for Document {
         ) -> Result<(), crate::Error> {
             macro_rules! eval_scope {
                 ($i:ident) => {
-                    Document::from_str($i)?
-                        .chunks_owned()
+                    Document::from_str($i)?.chunks_owned()
                 };
             }
 

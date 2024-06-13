@@ -15,11 +15,18 @@ Test
         )
     )
 )
-"#.trim();
+"#
+    .trim();
 
-    let ast = Document::from_str(&content);
+    let ast = Document::from_str(content);
 
-    assert_eq!(ast, Err(crate::Error::new(7, crate::ErrorType::UnexpectedClosing(ScopeVariant::Square))))
+    assert_eq!(
+        ast,
+        Err(crate::Error::new(
+            7,
+            crate::ErrorType::UnexpectedClosing(ScopeVariant::Square)
+        ))
+    )
 }
 
 #[test]
@@ -35,11 +42,18 @@ test
         \badargs[[[arg arg arg]]
     )
 )
-"#.trim();
+"#
+    .trim();
 
-    let ast = Document::from_str(&content);
+    let ast = Document::from_str(content);
 
-    assert_eq!(ast, Err(crate::Error::new(8, crate::ErrorType::UnclosedArgument(ScopeVariant::Square))))
+    assert_eq!(
+        ast,
+        Err(crate::Error::new(
+            8,
+            crate::ErrorType::UnclosedArgument(ScopeVariant::Square)
+        ))
+    )
 }
 
 #[test]
@@ -53,11 +67,18 @@ fn unclosed_scope() {
         [
     }
 )
-"#.trim();
+"#
+    .trim();
 
-    let ast = Document::from_str(&content);
+    let ast = Document::from_str(content);
 
-    assert_eq!(ast, Err(crate::Error::new(6, crate::ErrorType::UnclosedScope(ScopeVariant::Square))))
+    assert_eq!(
+        ast,
+        Err(crate::Error::new(
+            6,
+            crate::ErrorType::UnclosedScope(ScopeVariant::Square)
+        ))
+    )
 }
 
 #[test]

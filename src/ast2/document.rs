@@ -39,7 +39,7 @@ impl FromStr for Document {
 
 impl Display for Document {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        ast1::Document::from(self.clone()).fmt(f)
+        f.write_str(&self.0.iter().map(ToString::to_string).collect::<String>())
     }
 }
 

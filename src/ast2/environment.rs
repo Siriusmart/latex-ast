@@ -1,4 +1,8 @@
-use super::{Chunk, Scope};
+use std::fmt::Display;
+
+use crate::ast1::{self, IntoChunks};
+
+use super::{Chunk, ChunkVariant, Scope};
 
 /// An environment is a scope associated with a command and its arguments
 #[derive(Clone)]
@@ -11,6 +15,17 @@ pub struct Environment {
 
     prec_begin: String,
     prec_end: String,
+}
+
+impl Display for Environment {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!(
+            "{}",
+            ast1::Document::new(
+                Chunk::new(1, ChunkVariant::Environment(self.clone())).into_chunks()
+            )
+        ))
+    }
 }
 
 impl Environment {

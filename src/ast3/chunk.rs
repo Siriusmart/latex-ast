@@ -1,5 +1,9 @@
 use super::ChunkVariant;
 
+/// A chunk is a block of self contained content
+///
+/// - `Vec<Chunk>` makes a Document
+/// - Each chunk has a line number, indicating the line number its starting character is in
 #[derive(Clone)]
 #[cfg_attr(feature = "debug", derive(Debug))]
 #[cfg_attr(feature = "eq", derive(PartialEq, Eq))]

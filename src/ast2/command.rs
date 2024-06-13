@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::ast1;
 
 use super::Scope;
@@ -13,6 +15,12 @@ pub struct Command {
     ///
     /// Preceding string is the string between the current argument block and the previous block
     arguments: Vec<(String, Scope)>, // preceding string, scope
+}
+
+impl Display for Command {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{}", self.clone().to_ast1_command()))
+    }
 }
 
 impl Command {

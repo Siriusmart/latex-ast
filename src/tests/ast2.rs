@@ -16,11 +16,15 @@ fn no_environment_label() {
         \item test
     \end{itemize}
 \end{document}
-        "#.trim();
+        "#
+    .trim();
 
     let ast = Document::from_str(content);
 
-    assert_eq!(ast, Err(crate::Error::new(5, crate::ErrorType::NoEnvironmentLabel)))
+    assert_eq!(
+        ast,
+        Err(crate::Error::new(5, crate::ErrorType::NoEnvironmentLabel))
+    )
 }
 
 #[test]
@@ -33,11 +37,18 @@ fn unexpected_end() {
         \item test
     \end{itemize}
 \end{document}
-        "#.trim();
+        "#
+    .trim();
 
     let ast = Document::from_str(content);
 
-    assert_eq!(ast, Err(crate::Error::new(6, crate::ErrorType::UnexpectedEnd("itemize".to_string()))))
+    assert_eq!(
+        ast,
+        Err(crate::Error::new(
+            6,
+            crate::ErrorType::UnexpectedEnd("itemize".to_string())
+        ))
+    )
 }
 
 #[test]
@@ -51,11 +62,15 @@ fn too_many_args_end() {
         \item test
     \end{itemize}{boom}
 \end{document}
-        "#.trim();
+        "#
+    .trim();
 
     let ast = Document::from_str(content);
 
-    assert_eq!(ast, Err(crate::Error::new(7, crate::ErrorType::TooManyArgsEnd)))
+    assert_eq!(
+        ast,
+        Err(crate::Error::new(7, crate::ErrorType::TooManyArgsEnd))
+    )
 }
 
 #[test]

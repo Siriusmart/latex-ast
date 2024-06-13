@@ -237,7 +237,8 @@ impl MathsBlock {
                                         )),
                                     ))
                                 }
-                                MathsMode::SingleDollar(MathsVariant::Brackets) | MathsMode::DoubleDollar(MathsVariant::Brackets) => {}
+                                MathsMode::SingleDollar(MathsVariant::Brackets)
+                                | MathsMode::DoubleDollar(MathsVariant::Brackets) => {}
                             }
                         } else {
                             text_buffer.push(c)

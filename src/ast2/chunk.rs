@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{fmt::Display, str::FromStr};
 
 use crate::{ast1, ast2::Document};
 
@@ -14,6 +14,12 @@ use super::ChunkVariant;
 pub struct Chunk {
     line_no: u32,
     variant: ChunkVariant,
+}
+
+impl Display for Chunk {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{}", self.variant))
+    }
 }
 
 impl ast1::IntoChunks for Chunk {

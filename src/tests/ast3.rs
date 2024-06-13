@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use crate::{ast1, ast2, ast3::Document};
+use crate::ast1;
 
 #[test]
 fn debug() {
@@ -13,7 +13,8 @@ test
     \test]
 )
 \end{document}
-    "#.trim();
+    "#
+    .trim();
     let ast = ast1::Document::from_str(content).unwrap();
 
     dbg!(ast);

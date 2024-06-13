@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::ast1::{self, IntoChunks};
 
 use super::{Chunk, Document, ScopeVariant};
@@ -12,6 +14,12 @@ use super::{Chunk, Document, ScopeVariant};
 pub struct Scope {
     chunks: Vec<Chunk>,
     variant: ScopeVariant,
+}
+
+impl Display for Scope {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{}", self.clone().to_ast1_scope()))
+    }
 }
 
 impl Scope {

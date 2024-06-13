@@ -12,7 +12,7 @@ impl Paragraph {
             let mut text_buffer_line = 1;
             let mut buffer = String::new();
             let mut buffer_line = 1;
-            let mut consec_newlines  = 0;
+            let mut consec_newlines = 0;
 
             if let ChunkVariant::Text(s) = chunk.variant() {
                 for c in s.chars() {
@@ -22,7 +22,10 @@ impl Paragraph {
                             line_no += 1;
 
                             if !text_buffer.is_empty() {
-                                new.push(Chunk::new(text_buffer_line, ChunkVariant::Text(std::mem::take(&mut text_buffer))));
+                                new.push(Chunk::new(
+                                    text_buffer_line,
+                                    ChunkVariant::Text(std::mem::take(&mut text_buffer)),
+                                ));
                             }
 
                             buffer.push(c);
@@ -42,18 +45,21 @@ impl Paragraph {
                             }
 
                             text_buffer.push(c)
-                        },
+                        }
                         _ if consec_newlines == 1 => {
                             if text_buffer.is_empty() {
                                 text_buffer_line = buffer_line;
                             }
 
-                            text_buffer.extend(std::mem::take(&mut buffer).chars());
+                            text_buffer.push_str(&std::mem::take(&mut buffer));
                             text_buffer.push(c);
                             consec_newlines = 0;
                         }
                         _ => {
-                            new.push(Chunk::new(buffer_line, ChunkVariant::ParagraphBreak(std::mem::take(&mut buffer))));
+                            new.push(Chunk::new(
+                                buffer_line,
+                                ChunkVariant::ParagraphBreak(std::mem::take(&mut buffer)),
+                            ));
 
                             text_buffer_line = line_no;
                             consec_newlines = 0;
@@ -65,12 +71,18 @@ impl Paragraph {
 
                 if !buffer.is_empty() {
                     if consec_newlines > 1 {
-                        new.push(Chunk::new(buffer_line, ChunkVariant::ParagraphBreak(std::mem::take(&mut buffer))));
+                        new.push(Chunk::new(
+                            buffer_line,
+                            ChunkVariant::ParagraphBreak(std::mem::take(&mut buffer)),
+                        ));
                     } else {
-                        text_buffer.extend(buffer.chars());
+                        text_buffer.push_str(&buffer);
 
                         if !text_buffer.is_empty() {
-                            new.push(Chunk::new(text_buffer_line, ChunkVariant::Text(text_buffer)))
+                            new.push(Chunk::new(
+                                text_buffer_line,
+                                ChunkVariant::Text(text_buffer),
+                            ))
                         }
                     }
                 }
