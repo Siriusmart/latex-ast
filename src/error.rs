@@ -6,6 +6,7 @@ use crate::ast1::ScopeVariant;
 ///
 /// Contains line number of where the error occurs
 #[derive(Debug)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
 pub struct Error {
     pub line: u32,
     pub r#type: ErrorType,
@@ -19,6 +20,7 @@ impl Error {
 
 /// Error message content
 #[derive(Debug)]
+#[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
 pub enum ErrorType {
     /// There are too many closing parenthesis of said variant
     UnexpectedClosing(ScopeVariant),

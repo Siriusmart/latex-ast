@@ -3,6 +3,64 @@ use std::str::FromStr;
 use crate::ast1::{Chunk, ChunkVariant, Command, Document, Scope, ScopeVariant};
 
 #[test]
+fn unexpected_closing() {
+    let content = r#"
+Test
+
+(
+    (
+        Hello
+        (
+            \badargs]
+        )
+    )
+)
+"#.trim();
+
+    let ast = Document::from_str(&content);
+
+    assert_eq!(ast, Err(crate::Error::new(7, crate::ErrorType::UnexpectedClosing(ScopeVariant::Square))))
+}
+
+#[test]
+fn unclosed_argument() {
+    let content = r#"
+test
+(
+    \hello
+    test
+    (
+        test
+        \hello[]
+        \badargs[[[arg arg arg]]
+    )
+)
+"#.trim();
+
+    let ast = Document::from_str(&content);
+
+    assert_eq!(ast, Err(crate::Error::new(8, crate::ErrorType::UnclosedArgument(ScopeVariant::Square))))
+}
+
+#[test]
+fn unclosed_scope() {
+    let content = r#"
+(
+    \hello
+    test
+    \test{
+        test
+        [
+    }
+)
+"#.trim();
+
+    let ast = Document::from_str(&content);
+
+    assert_eq!(ast, Err(crate::Error::new(6, crate::ErrorType::UnclosedScope(ScopeVariant::Square))))
+}
+
+#[test]
 fn basic() {
     let content = r#"
 Hello world

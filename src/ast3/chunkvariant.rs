@@ -8,7 +8,7 @@ pub enum ChunkVariant {
     /// A block of text
     Text(String),
     /// Paragraph breaking
-    ParagraphBreak,
+    ParagraphBreak(String),
     /// A block of inline or outline maths
     MathsBlock(MathsBlock),
     /// Whitespaces between paragraphs

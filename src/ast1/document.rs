@@ -188,11 +188,7 @@ impl FromStr for Document {
         ) -> Result<(), crate::Error> {
             macro_rules! eval_scope {
                 ($i:ident) => {
-                    Document::from_str($i)
-                        .map_err(|mut e| {
-                            e.line += buffer_line_no - 1;
-                            e
-                        })?
+                    Document::from_str($i)?
                         .chunks_owned()
                 };
             }
@@ -205,7 +201,7 @@ impl FromStr for Document {
                 Buffer::Text { .. } => {}
                 Buffer::Scope { depth, variant, .. } if *depth != 0 => {
                     return Err(crate::Error::new(
-                        buffer_line_no,
+                        1,
                         crate::ErrorType::UnclosedScope(*variant),
                     ))
                 }
@@ -215,7 +211,7 @@ impl FromStr for Document {
                 )),
                 Buffer::Command { depth, scopes, .. } if *depth != 0 => {
                     return Err(crate::Error::new(
-                        buffer_line_no,
+                        1,
                         crate::ErrorType::UnclosedArgument(scopes.last().unwrap().1),
                     ))
                 }
@@ -242,7 +238,10 @@ impl FromStr for Document {
         // map flush errors lines to its absolute line number
         macro_rules! flush {
             () => {
-                flush(&mut buffer, buffer_line_no, &mut chunks)?;
+                flush(&mut buffer, buffer_line_no, &mut chunks).map_err(|mut e| {
+                    e.line += buffer_line_no - 1;
+                    e
+                })?;
 
                 buffer_line_no = line_no;
 

@@ -6,6 +6,59 @@ use crate::{
 };
 
 #[test]
+fn no_environment_label() {
+    let content = r#"
+\usepackage{amsmath}
+
+\begin{document}
+    Hello
+    \begin
+        \item test
+    \end{itemize}
+\end{document}
+        "#.trim();
+
+    let ast = Document::from_str(content);
+
+    assert_eq!(ast, Err(crate::Error::new(5, crate::ErrorType::NoEnvironmentLabel)))
+}
+
+#[test]
+fn unexpected_end() {
+    let content = r#"
+\usepackage{amsmath}
+
+\begin{document}
+    Hello
+        \item test
+    \end{itemize}
+\end{document}
+        "#.trim();
+
+    let ast = Document::from_str(content);
+
+    assert_eq!(ast, Err(crate::Error::new(6, crate::ErrorType::UnexpectedEnd("itemize".to_string()))))
+}
+
+#[test]
+fn too_many_args_end() {
+    let content = r#"
+\usepackage{amsmath}
+
+\begin{document}
+    Hello
+    \begin{itemize}
+        \item test
+    \end{itemize}{boom}
+\end{document}
+        "#.trim();
+
+    let ast = Document::from_str(content);
+
+    assert_eq!(ast, Err(crate::Error::new(7, crate::ErrorType::TooManyArgsEnd)))
+}
+
+#[test]
 fn basic() {
     let content = r#"
 \usepackage{amsmath}
