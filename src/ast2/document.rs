@@ -1,4 +1,4 @@
-use crate::ast1;
+use crate::{ast1, ast3};
 
 use super::{Chunk, ChunkVariant, Environment};
 
@@ -43,6 +43,14 @@ impl Display for Document {
     }
 }
 
+impl From<ast3::Document> for Document {
+    fn from(value: ast3::Document) -> Self {
+        let (_, _, preamable, body, _, body_args, body_begin_prec, body_end_prec, trailing) =
+            value.decompose();
+        todo!()
+    }
+}
+
 impl TryFrom<crate::ast1::Document> for Document {
     type Error = crate::Error;
     fn try_from(value: crate::ast1::Document) -> Result<Self, Self::Error> {
@@ -65,7 +73,7 @@ impl TryFrom<crate::ast1::Document> for Document {
 
             macro_rules! push_buffer {
                 ($x:expr) => {
-                    buffer.push(ast1::Chunk::new(line_no - buffer_start + 1, $x))
+                    buffer.push(ast1::Chunk::new_unchecked(line_no - buffer_start + 1, $x))
                 };
             }
 
@@ -154,7 +162,7 @@ impl TryFrom<crate::ast1::Document> for Document {
                             return Err(crate::Error::new(
                                 line_no,
                                 crate::ErrorType::UnexpectedEnd(
-                                    ast1::Document::new(
+                                    ast1::Document::new_unchecked(
                                         c.arguments_owned().remove(0).1.chunks_owned(),
                                     )
                                     .to_string(),
@@ -184,11 +192,12 @@ impl TryFrom<crate::ast1::Document> for Document {
                                 chunks.push(Chunk::new(
                                     buffer_start,
                                     ChunkVariant::Environment(Environment::new(
-                                        ast1::Document::new(label.chunks_owned()).to_string(),
+                                        ast1::Document::new_unchecked(label.chunks_owned())
+                                            .to_string(),
                                         args_new,
-                                        map_env_e!(Document::try_from(ast1::Document::new(
-                                            mem::take(&mut buffer)
-                                        )))
+                                        map_env_e!(Document::try_from(
+                                            ast1::Document::new_unchecked(mem::take(&mut buffer))
+                                        ))
                                         .chunks_owned(),
                                         mem::take(&mut prec_begin),
                                         prec_end,
@@ -208,7 +217,7 @@ impl TryFrom<crate::ast1::Document> for Document {
             return Err(crate::Error::new(
                 buffer_start,
                 crate::ErrorType::UnclosedEnvironment(
-                    ast1::Document::new(label.clone()).to_string(),
+                    ast1::Document::new_unchecked(label.clone()).to_string(),
                 ),
             ));
         }

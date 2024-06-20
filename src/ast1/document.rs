@@ -5,6 +5,8 @@ use crate::{
         chunkvariant::ChunkVariant, command::Command, scope::Scope, scopevariant::ScopeVariant,
     },
     ast2,
+    traits::{Lines, Validate},
+    InternalError,
 };
 
 use super::{chunk::Chunk, into_chunks::IntoChunks};
@@ -29,18 +31,75 @@ impl Document {
     }
 
     /// Create new document from chunks
-    pub fn new(chunks: Vec<Chunk>) -> Self {
+    pub fn new(chunks: Vec<Chunk>) -> Result<Self, InternalError> {
+        let out = Self(chunks);
+        out.validate()?;
+        Ok(out)
+    }
+
+    /// Create new document from chunks without checking
+    pub fn new_unchecked(chunks: Vec<Chunk>) -> Self {
         Self(chunks)
     }
 
-    /// Push new chunks into document
-    pub fn push(&mut self, mut chunks: Vec<Chunk>) {
-        self.0.append(&mut chunks)
+    /// Push a variant to the document
+    pub fn push(&mut self, variant: ChunkVariant) -> Result<(), InternalError> {
+        variant.validate()?;
+        self.push_unchecked(variant);
+        Ok(())
+    }
+
+    /// Push a variant to the document without checking
+    pub fn push_unchecked(&mut self, variant: ChunkVariant) {
+        let line_no = self
+            .chunks()
+            .last()
+            .map(|last| last.line_no() + last.lines() - 1)
+            .unwrap_or(1);
+        self.push_chunk_unchecked(Chunk::new_unchecked(line_no, variant));
+    }
+
+    /// Push a chunk to the document
+    pub fn push_chunk(&mut self, chunk: Chunk) -> Result<(), InternalError> {
+        chunk.validate()?;
+
+        let expected_line = self
+            .chunks()
+            .last()
+            .map(|last| last.line_no() + last.lines() - 1)
+            .unwrap_or(1);
+
+        if expected_line != chunk.line_no() {
+            return Err(crate::InternalError::IncorrectChunkLineNumber {
+                expected: expected_line,
+                got: chunk.line_no(),
+            });
+        }
+
+        self.push_chunk_unchecked(chunk);
+        Ok(())
+    }
+
+    /// Push a chunk to the document without checking
+    pub fn push_chunk_unchecked(&mut self, chunk: Chunk) {
+        if let ChunkVariant::Text(s) = chunk.variant() {
+            if let Some(last) = self.0.last_mut() {
+                if let ChunkVariant::Text(last_s) = last.variant_mut() {
+                    last_s.push_str(s);
+                    return;
+                }
+            }
+        }
+
+        self.0.push(chunk)
     }
 
     /// Push new chunks into document with structs that implement `ast1::IntoChunks`
-    pub fn push_into<T: IntoChunks>(&mut self, original: T) {
-        self.push(original.into_chunks())
+    pub fn push_into_unchecked<T: IntoChunks>(&mut self, original: T) {
+        original
+            .into_chunks()
+            .into_iter()
+            .for_each(|chunk| self.push_chunk_unchecked(chunk))
     }
 }
 
@@ -50,12 +109,32 @@ impl Display for Document {
     }
 }
 
+impl Validate for Document {
+    fn validate(&self) -> Result<(), crate::InternalError> {
+        for chunk in self.0.iter() {
+            chunk.validate()?
+        }
+
+        Ok(())
+    }
+}
+
+impl Lines for Document {
+    fn lines(&self) -> u32 {
+        self.chunks()
+            .iter()
+            .map(|chunk| chunk.lines() - 1)
+            .sum::<u32>()
+            + 1
+    }
+}
+
 impl From<ast2::Document> for Document {
     fn from(value: ast2::Document) -> Self {
         let mut out = Self::default();
 
         for chunk in value.chunks_owned() {
-            out.push_into(chunk)
+            out.push_into_unchecked(chunk)
         }
 
         out
@@ -193,10 +272,12 @@ impl FromStr for Document {
             }
 
             match buffer {
-                Buffer::Text { ref mut content } if !content.is_empty() => chunks.push(Chunk::new(
-                    buffer_line_no,
-                    ChunkVariant::Text(std::mem::take(content)),
-                )),
+                Buffer::Text { ref mut content } if !content.is_empty() => {
+                    chunks.push(Chunk::new_unchecked(
+                        buffer_line_no,
+                        ChunkVariant::Text(std::mem::take(content)),
+                    ))
+                }
                 Buffer::Text { .. } => {}
                 Buffer::Scope { depth, variant, .. } if *depth != 0 => {
                     return Err(crate::Error::new(
@@ -204,9 +285,12 @@ impl FromStr for Document {
                         crate::ErrorType::UnclosedScope(*variant),
                     ))
                 }
-                Buffer::Scope { content, .. } => chunks.push(Chunk::new(
+                Buffer::Scope { content, .. } => chunks.push(Chunk::new_unchecked(
                     buffer_line_no,
-                    ChunkVariant::Scope(Scope::new(eval_scope!(content), ScopeVariant::Curly)),
+                    ChunkVariant::Scope(Scope::new_unchecked(
+                        eval_scope!(content),
+                        ScopeVariant::Curly,
+                    )),
                 )),
                 Buffer::Command { depth, scopes, .. } if *depth != 0 => {
                     return Err(crate::Error::new(
@@ -220,13 +304,16 @@ impl FromStr for Document {
                     for (content, variant, preceding) in scopes.iter_mut() {
                         arguments.push((
                             std::mem::take(preceding),
-                            Scope::new(eval_scope!(content), *variant),
+                            Scope::new_unchecked(eval_scope!(content), *variant),
                         ))
                     }
 
-                    chunks.push(Chunk::new(
+                    chunks.push(Chunk::new_unchecked(
                         buffer_line_no,
-                        ChunkVariant::Command(Command::new(std::mem::take(label), arguments)),
+                        ChunkVariant::Command(Command::new_unchecked(
+                            std::mem::take(label),
+                            arguments,
+                        )),
                     ))
                 }
             }

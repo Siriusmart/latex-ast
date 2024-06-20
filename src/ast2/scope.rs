@@ -25,7 +25,7 @@ impl Display for Scope {
 impl Scope {
     /// Maps to `ast1::Scope`
     pub fn to_ast1_scope(self) -> ast1::Scope {
-        ast1::Scope::new(
+        ast1::Scope::new_unchecked(
             self.chunks
                 .into_iter()
                 .flat_map(Chunk::into_chunks)
@@ -68,7 +68,8 @@ impl TryFrom<crate::ast1::Scope> for Scope {
     fn try_from(value: crate::ast1::Scope) -> Result<Self, Self::Error> {
         Ok(Self {
             variant: value.variant().into(),
-            chunks: Document::try_from(ast1::Document::new(value.chunks_owned()))?.chunks_owned(),
+            chunks: Document::try_from(ast1::Document::new_unchecked(value.chunks_owned()))?
+                .chunks_owned(),
         })
     }
 }

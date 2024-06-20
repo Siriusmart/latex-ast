@@ -24,7 +24,7 @@ impl Display for Chunk {
 
 impl ast1::IntoChunks for Chunk {
     fn into_chunks(self) -> Vec<ast1::Chunk> {
-        vec![ast1::Chunk::new(
+        vec![ast1::Chunk::new_unchecked(
             self.line_no,
             match self.variant {
                 ChunkVariant::Text(s) => ast1::ChunkVariant::Text(s),
@@ -55,14 +55,14 @@ impl ast1::IntoChunks for Chunk {
                                 })
                                 .sum::<usize>()) as u32;
 
-                    let label = ast1::Scope::new(
+                    let label = ast1::Scope::new_unchecked(
                         ast1::Document::from_str(&label).unwrap().chunks_owned(),
                         ast1::ScopeVariant::Curly,
                     );
 
-                    return [ast1::Chunk::new(
+                    return [ast1::Chunk::new_unchecked(
                         self.line_no,
-                        ast1::ChunkVariant::Command(ast1::Command::new(
+                        ast1::ChunkVariant::Command(ast1::Command::new_unchecked(
                             "begin".to_string(),
                             [(prec_begin, label.clone())]
                                 .into_iter()
@@ -79,9 +79,9 @@ impl ast1::IntoChunks for Chunk {
                         chunk.into_chunks()
                     }))
                     .chain(
-                        [ast1::Chunk::new(
+                        [ast1::Chunk::new_unchecked(
                             end_line_no,
-                            ast1::ChunkVariant::Command(ast1::Command::new(
+                            ast1::ChunkVariant::Command(ast1::Command::new_unchecked(
                                 "end".to_string(),
                                 vec![(prec_end, label.clone())],
                             )),

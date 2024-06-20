@@ -1,6 +1,11 @@
 use std::fmt::Display;
 use std::fmt::Write;
 
+use crate::ast1::ScopeVariant;
+use crate::traits::Lines;
+use crate::traits::Validate;
+use crate::InternalError;
+
 use super::scope::Scope;
 
 /// Represents a command and its arguments
@@ -18,7 +23,14 @@ pub struct Command {
 
 impl Command {
     /// Construct new Command
-    pub fn new(label: String, arguments: Vec<(String, Scope)>) -> Self {
+    pub fn new(label: String, arguments: Vec<(String, Scope)>) -> Result<Self, InternalError> {
+        let out = Self { label, arguments };
+        out.validate()?;
+        Ok(out)
+    }
+
+    /// Construct new Command without checking
+    pub fn new_unchecked(label: String, arguments: Vec<(String, Scope)>) -> Self {
         Self { label, arguments }
     }
 
@@ -60,5 +72,39 @@ impl Display for Command {
                     s
                 })
         ))
+    }
+}
+
+impl Validate for Command {
+    fn validate(&self) -> Result<(), crate::InternalError> {
+        if self.label.len() != 1 {
+            for c in self.label.chars() {
+                if matches!(c, '\\' | '%')
+                    || ScopeVariant::is_opening(c)
+                    || ScopeVariant::is_closing(c)
+                {
+                    return Err(crate::InternalError::UnsanitisedCharInString(c));
+                }
+            }
+        }
+
+        for (_, arg) in self.arguments.iter() {
+            arg.validate()?
+        }
+
+        Ok(())
+    }
+}
+
+impl Lines for Command {
+    fn lines(&self) -> u32 {
+        let mut total = self.label.chars().filter(|c| c == &'\n').count() as u32;
+
+        for (prec, arg) in self.arguments.iter() {
+            total += prec.chars().filter(|c| c == &'\n').count() as u32;
+            total += arg.lines() - 1
+        }
+
+        total + 1
     }
 }

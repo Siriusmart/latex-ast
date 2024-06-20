@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::ast1::ScopeVariant;
+use crate::{ast1::ScopeVariant, InternalError};
 
 /// Main error struct
 ///
@@ -44,6 +44,8 @@ pub enum ErrorType {
     UnexpectedMathsEnd,
     /// Maths block is unclosed
     UnclosedMaths,
+    /// Non LaTeX related error
+    Internal(InternalError),
 }
 
 impl Display for Error {

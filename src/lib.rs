@@ -13,7 +13,12 @@ pub mod ast1;
 pub mod ast2;
 pub mod ast3;
 
+pub mod traits;
+
 mod error;
 pub use error::*;
+
+mod internal_error;
+pub use internal_error::InternalError;
 
 mod tests;

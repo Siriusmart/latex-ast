@@ -26,7 +26,7 @@ impl Display for Command {
 impl Command {
     /// Maps to `ast1::Command`
     pub fn to_ast1_command(self) -> ast1::Command {
-        ast1::Command::new(
+        ast1::Command::new_unchecked(
             self.label,
             self.arguments
                 .into_iter()

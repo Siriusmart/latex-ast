@@ -49,6 +49,32 @@ impl Document {
             trailing,
         }
     }
+
+    pub fn decompose(
+        self,
+    ) -> (
+        Option<String>,
+        HashMap<String, Option<String>>,
+        Vec<Chunk>,
+        Vec<Chunk>,
+        u32,
+        Vec<(String, Scope)>,
+        String,
+        String,
+        Vec<Chunk>,
+    ) {
+        (
+            self.documentclass,
+            self.documentoptions,
+            self.preamable,
+            self.body,
+            self.body_line,
+            self.body_args,
+            self.body_begin_prec,
+            self.body_end_prec,
+            self.trailing,
+        )
+    }
 }
 
 impl TryFrom<ast2::Document> for Document {

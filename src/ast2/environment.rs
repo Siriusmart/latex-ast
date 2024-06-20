@@ -21,7 +21,7 @@ impl Display for Environment {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
             "{}",
-            ast1::Document::new(
+            ast1::Document::new_unchecked(
                 Chunk::new(1, ChunkVariant::Environment(self.clone())).into_chunks()
             )
         ))
