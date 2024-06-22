@@ -181,7 +181,7 @@ impl MathsBlock {
                                     mode = MathsMode::None;
 
                                     if !text_buffer.is_empty() {
-                                        buffer.push(ast2::Chunk::new(
+                                        buffer.push(ast2::Chunk::new_unchecked(
                                             text_buffer_line,
                                             ast2::ChunkVariant::Text(std::mem::take(
                                                 &mut text_buffer,
@@ -211,7 +211,7 @@ impl MathsBlock {
                                     mode = MathsMode::None;
 
                                     if !text_buffer.is_empty() {
-                                        buffer.push(ast2::Chunk::new(
+                                        buffer.push(ast2::Chunk::new_unchecked(
                                             text_buffer_line,
                                             ast2::ChunkVariant::Text(std::mem::take(
                                                 &mut text_buffer,
@@ -252,14 +252,14 @@ impl MathsBlock {
                                 ChunkVariant::Text(text_buffer),
                             ))
                         } else {
-                            buffer.push(ast2::Chunk::new(
+                            buffer.push(ast2::Chunk::new_unchecked(
                                 text_buffer_line + line_no - 1,
                                 ast2::ChunkVariant::Text(text_buffer),
                             ))
                         }
                     }
                 }
-                _ => buffer.push(ast2::Chunk::new(line_no, variant)),
+                _ => buffer.push(ast2::Chunk::new_unchecked(line_no, variant)),
             }
         }
 

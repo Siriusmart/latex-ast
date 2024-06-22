@@ -1,6 +1,11 @@
 use std::{fmt::Display, str::FromStr};
 
-use crate::{ast1, ast2::Document};
+use crate::{
+    ast1,
+    ast2::Document,
+    traits::{Lines, Validate},
+    InternalError,
+};
 
 use super::ChunkVariant;
 
@@ -40,13 +45,13 @@ impl ast1::IntoChunks for Chunk {
                     let end_line_no = self.line_no
                         + (lines(&prec_begin)
                             + label.chars().filter(|c| c == &'\n').count()
-                            + lines(&Document::new(content.clone()).to_string())
+                            + lines(&Document::new_unchecked(content.clone()).to_string())
                             + args
                                 .iter()
                                 .map(|(prec, arg)| {
                                     lines(prec)
                                         + lines(
-                                            &Document::new(vec![Chunk::new(
+                                            &Document::new_unchecked(vec![Chunk::new_unchecked(
                                                 1,
                                                 ChunkVariant::Scope(arg.clone()),
                                             )])
@@ -95,9 +100,28 @@ impl ast1::IntoChunks for Chunk {
     }
 }
 
+impl Validate for Chunk {
+    fn validate(&self) -> Result<(), crate::InternalError> {
+        self.variant().validate()
+    }
+}
+
+impl Lines for Chunk {
+    fn lines(&self) -> u32 {
+        self.variant.lines()
+    }
+}
+
 impl Chunk {
     /// Constructs new Chunk
-    pub fn new(line_no: u32, variant: ChunkVariant) -> Self {
+    pub fn new(line_no: u32, variant: ChunkVariant) -> Result<Self, InternalError> {
+        let out = Self { line_no, variant };
+        out.validate()?;
+        Ok(out)
+    }
+
+    /// Constructs new Chunk without checking
+    pub fn new_unchecked(line_no: u32, variant: ChunkVariant) -> Self {
         Self { line_no, variant }
     }
 
@@ -114,6 +138,11 @@ impl Chunk {
     /// Returns the variant of current chunk
     pub fn variant(&self) -> &ChunkVariant {
         &self.variant
+    }
+
+    /// Returns the mutable variant of current chunk
+    pub fn variant_mut(&mut self) -> &mut ChunkVariant {
+        &mut self.variant
     }
 
     /// Returns the owned variant of current chunk

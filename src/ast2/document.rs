@@ -1,4 +1,8 @@
-use crate::{ast1, ast3};
+use crate::{
+    ast1, ast3,
+    traits::{Lines, Validate},
+    InternalError,
+};
 
 use super::{Chunk, ChunkVariant, Environment};
 
@@ -13,8 +17,15 @@ use std::{fmt::Display, mem, str::FromStr};
 pub struct Document(Vec<Chunk>);
 
 impl Document {
-    /// Constructs a new Document from chunks
-    pub fn new(chunks: Vec<Chunk>) -> Self {
+    /// Create new document from chunks
+    pub fn new(chunks: Vec<Chunk>) -> Result<Self, InternalError> {
+        let out = Self(chunks);
+        out.validate()?;
+        Ok(out)
+    }
+
+    /// Create new document from chunks without checking
+    pub fn new_unchecked(chunks: Vec<Chunk>) -> Self {
         Self(chunks)
     }
 
@@ -26,6 +37,58 @@ impl Document {
     /// Returns the owned chunks inside the document
     pub fn chunks_owned(self) -> Vec<Chunk> {
         self.0
+    }
+
+    /// Push a variant to the document
+    pub fn push(&mut self, variant: ChunkVariant) -> Result<(), InternalError> {
+        variant.validate()?;
+        self.push_unchecked(variant);
+        Ok(())
+    }
+
+    /// Push a variant to the document without checking
+    pub fn push_unchecked(&mut self, variant: ChunkVariant) {
+        let line_no = self
+            .chunks()
+            .last()
+            .map(|last| last.line_no() + last.lines() - 1)
+            .unwrap_or(1);
+        self.push_chunk_unchecked(Chunk::new_unchecked(line_no, variant));
+    }
+
+    /// Push a chunk to the document
+    pub fn push_chunk(&mut self, chunk: Chunk) -> Result<(), InternalError> {
+        chunk.validate()?;
+
+        let expected_line = self
+            .chunks()
+            .last()
+            .map(|last| last.line_no() + last.lines() - 1)
+            .unwrap_or(1);
+
+        if expected_line != chunk.line_no() {
+            return Err(crate::InternalError::IncorrectChunkLineNumber {
+                expected: expected_line,
+                got: chunk.line_no(),
+            });
+        }
+
+        self.push_chunk_unchecked(chunk);
+        Ok(())
+    }
+
+    /// Push a chunk to the document without checking
+    pub fn push_chunk_unchecked(&mut self, chunk: Chunk) {
+        if let ChunkVariant::Text(s) = chunk.variant() {
+            if let Some(last) = self.0.last_mut() {
+                if let ChunkVariant::Text(last_s) = last.variant_mut() {
+                    last_s.push_str(s);
+                    return;
+                }
+            }
+        }
+
+        self.0.push(chunk)
     }
 }
 
@@ -40,6 +103,37 @@ impl FromStr for Document {
 impl Display for Document {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.0.iter().map(ToString::to_string).collect::<String>())
+    }
+}
+
+impl Validate for Document {
+    fn validate(&self) -> Result<(), crate::InternalError> {
+        let mut expected_line = 1;
+
+        for chunk in self.0.iter() {
+            if chunk.line_no() != expected_line {
+                return Err(InternalError::IncorrectChunkLineNumber {
+                    expected: expected_line,
+                    got: chunk.line_no(),
+                });
+            }
+
+            chunk.validate()?;
+
+            expected_line += chunk.lines() - 1;
+        }
+
+        Ok(())
+    }
+}
+
+impl Lines for Document {
+    fn lines(&self) -> u32 {
+        self.chunks()
+            .iter()
+            .map(|chunk| chunk.lines() - 1)
+            .sum::<u32>()
+            + 1
     }
 }
 
@@ -67,7 +161,7 @@ impl TryFrom<crate::ast1::Document> for Document {
 
             macro_rules! push_chunks {
                 ($x:expr) => {
-                    chunks.push(Chunk::new(line_no, $x))
+                    chunks.push(Chunk::new_unchecked(line_no, $x))
                 };
             }
 
@@ -189,9 +283,9 @@ impl TryFrom<crate::ast1::Document> for Document {
                                     args_new.push((prec, scope.try_into()?))
                                 }
 
-                                chunks.push(Chunk::new(
+                                chunks.push(Chunk::new_unchecked(
                                     buffer_start,
-                                    ChunkVariant::Environment(Environment::new(
+                                    ChunkVariant::Environment(Environment::new_unchecked(
                                         ast1::Document::new_unchecked(label.chunks_owned())
                                             .to_string(),
                                         args_new,

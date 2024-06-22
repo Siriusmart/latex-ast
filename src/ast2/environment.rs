@@ -1,6 +1,10 @@
 use std::fmt::Display;
 
-use crate::ast1::{self, IntoChunks};
+use crate::{
+    ast1::{self, IntoChunks},
+    traits::{Lines, Validate},
+    InternalError,
+};
 
 use super::{Chunk, ChunkVariant, Scope};
 
@@ -22,15 +26,36 @@ impl Display for Environment {
         f.write_fmt(format_args!(
             "{}",
             ast1::Document::new_unchecked(
-                Chunk::new(1, ChunkVariant::Environment(self.clone())).into_chunks()
+                Chunk::new_unchecked(1, ChunkVariant::Environment(self.clone())).into_chunks()
             )
         ))
     }
 }
 
 impl Environment {
-    /// Constructs a new Environment
     pub fn new(
+        label: String,
+        arguments: Vec<(String, Scope)>,
+        content: Vec<Chunk>,
+        prec_begin: String,
+        prec_end: String,
+    ) -> Result<Self, InternalError> {
+        let out = Self {
+            label,
+            arguments,
+            content,
+
+            prec_begin,
+            prec_end,
+        };
+
+        out.validate()?;
+
+        Ok(out)
+    }
+
+    /// Constructs a new Environment
+    pub fn new_unchecked(
         label: String,
         arguments: Vec<(String, Scope)>,
         content: Vec<Chunk>,
@@ -45,6 +70,52 @@ impl Environment {
             prec_begin,
             prec_end,
         }
+    }
+}
+
+impl Validate for Environment {
+    fn validate(&self) -> Result<(), crate::InternalError> {
+        for c in self.label.chars() {
+            if matches!(c, '\\' | '%')
+                || ast1::ScopeVariant::is_opening(c)
+                || ast1::ScopeVariant::is_closing(c)
+            {
+                return Err(crate::InternalError::UnsanitisedCharInString(c));
+            }
+        }
+
+        for (_, arg) in self.arguments.iter() {
+            arg.validate()?
+        }
+
+        for chunk in self.content.iter() {
+            chunk.validate()?
+        }
+
+        Ok(())
+    }
+}
+
+impl Lines for Environment {
+    fn lines(&self) -> u32 {
+        let mut lines = self.label.chars().filter(|c| c == &'\n').count() as u32 * 2;
+        lines += self
+            .prec_begin
+            .chars()
+            .chain(self.prec_end.chars())
+            .filter(|c| c == &'\n')
+            .count() as u32;
+
+        for (prec, arg) in self.arguments.iter() {
+            lines += prec.chars().filter(|c| c == &'\n').count() as u32;
+            lines += arg.lines() - 1;
+        }
+
+        for chunk in self.content.iter() {
+            lines += chunk.lines() - 1;
+        }
+
+        lines + 1
     }
 }
 

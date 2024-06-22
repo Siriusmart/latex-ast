@@ -111,8 +111,19 @@ impl Display for Document {
 
 impl Validate for Document {
     fn validate(&self) -> Result<(), crate::InternalError> {
+        let mut expected_line = 1;
+
         for chunk in self.0.iter() {
-            chunk.validate()?
+            if chunk.line_no() != expected_line {
+                return Err(InternalError::IncorrectChunkLineNumber {
+                    expected: expected_line,
+                    got: chunk.line_no(),
+                });
+            }
+
+            chunk.validate()?;
+
+            expected_line += chunk.lines() - 1;
         }
 
         Ok(())

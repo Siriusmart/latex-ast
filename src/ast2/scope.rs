@@ -1,6 +1,10 @@
 use std::fmt::Display;
 
-use crate::ast1::{self, IntoChunks};
+use crate::{
+    ast1::{self, IntoChunks},
+    traits::{Lines, Validate},
+    InternalError,
+};
 
 use super::{Chunk, Document, ScopeVariant};
 
@@ -35,9 +39,36 @@ impl Scope {
     }
 }
 
+impl Validate for Scope {
+    fn validate(&self) -> Result<(), crate::InternalError> {
+        for chunk in self.chunks() {
+            chunk.validate()?
+        }
+
+        Ok(())
+    }
+}
+
+impl Lines for Scope {
+    fn lines(&self) -> u32 {
+        self.chunks()
+            .iter()
+            .map(|chunk| chunk.lines() - 1)
+            .sum::<u32>()
+            + 1
+    }
+}
+
 impl Scope {
     /// Create new scope from its content and the scope variant
-    pub fn new(chunks: Vec<Chunk>, variant: ScopeVariant) -> Self {
+    pub fn new(chunks: Vec<Chunk>, variant: ScopeVariant) -> Result<Self, InternalError> {
+        let out = Self { chunks, variant };
+        out.validate()?;
+        Ok(out)
+    }
+
+    /// Create new scope from its content and the scope variant without checking
+    pub fn new_unchecked(chunks: Vec<Chunk>, variant: ScopeVariant) -> Self {
         Self { chunks, variant }
     }
 

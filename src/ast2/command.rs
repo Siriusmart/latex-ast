@@ -1,6 +1,10 @@
 use std::fmt::Display;
 
-use crate::ast1;
+use crate::{
+    ast1,
+    traits::{Lines, Validate},
+    InternalError,
+};
 
 use super::Scope;
 
@@ -38,7 +42,14 @@ impl Command {
 
 impl Command {
     /// Construct new Command
-    pub fn new(label: String, arguments: Vec<(String, Scope)>) -> Self {
+    pub fn new(label: String, arguments: Vec<(String, Scope)>) -> Result<Self, InternalError> {
+        let out = Self { label, arguments };
+        out.validate()?;
+        Ok(out)
+    }
+
+    /// Construct new Command without checking
+    pub fn new_unchecked(label: String, arguments: Vec<(String, Scope)>) -> Self {
         Self { label, arguments }
     }
 
@@ -81,5 +92,39 @@ impl TryFrom<crate::ast1::Command> for Command {
         }
 
         Ok(Self { label, arguments })
+    }
+}
+
+impl Validate for Command {
+    fn validate(&self) -> Result<(), crate::InternalError> {
+        if self.label.len() != 1 {
+            for c in self.label.chars() {
+                if matches!(c, '\\' | '%')
+                    || ast1::ScopeVariant::is_opening(c)
+                    || ast1::ScopeVariant::is_closing(c)
+                {
+                    return Err(crate::InternalError::UnsanitisedCharInString(c));
+                }
+            }
+        }
+
+        for (_, arg) in self.arguments.iter() {
+            arg.validate()?
+        }
+
+        Ok(())
+    }
+}
+
+impl Lines for Command {
+    fn lines(&self) -> u32 {
+        let mut total = self.label.chars().filter(|c| c == &'\n').count() as u32;
+
+        for (prec, arg) in self.arguments.iter() {
+            total += prec.chars().filter(|c| c == &'\n').count() as u32;
+            total += arg.lines() - 1
+        }
+
+        total + 1
     }
 }

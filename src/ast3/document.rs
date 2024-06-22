@@ -126,11 +126,12 @@ impl TryFrom<ast2::Document> for Document {
                                 ))
                             }
                             ast2::ScopeVariant::Curly => {
-                                construct.documentclass =
-                                    Some(ast2::Document::new(scope.chunks_owned()).to_string())
+                                construct.documentclass = Some(
+                                    ast2::Document::new_unchecked(scope.chunks_owned()).to_string(),
+                                )
                             }
                             _ => {
-                                for opt in ast2::Document::new(scope.chunks_owned())
+                                for opt in ast2::Document::new_unchecked(scope.chunks_owned())
                                     .to_string()
                                     .split(',')
                                 {
@@ -148,12 +149,12 @@ impl TryFrom<ast2::Document> for Document {
                             }
                         }
                     }
-                    preamable.push(ast2::Chunk::new(line_no, variant))
+                    preamable.push(ast2::Chunk::new_unchecked(line_no, variant))
                 }
                 _ if cursor == CursorState::Preamable => {
-                    preamable.push(ast2::Chunk::new(line_no, variant))
+                    preamable.push(ast2::Chunk::new_unchecked(line_no, variant))
                 }
-                _ => trailing.push(ast2::Chunk::new(line_no, variant)),
+                _ => trailing.push(ast2::Chunk::new_unchecked(line_no, variant)),
             }
         }
 
