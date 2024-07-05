@@ -8,6 +8,10 @@ pub enum InternalError {
     UnsanitisedCharInString(char),
     /// Incorrect line number for a chunk
     IncorrectChunkLineNumber { expected: u32, got: u32 },
+    /// ParagraphBreak does not contain enough line breaks
+    ParagraphBreakTooShort,
+    /// Nonwhitespace in ParagraphBreak
+    ParagraghBreakNonwhitespace,
 }
 
 impl Display for InternalError {

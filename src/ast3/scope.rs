@@ -1,4 +1,7 @@
-use crate::ast2;
+use crate::{
+    ast2,
+    traits::{Lines, Validate},
+};
 
 use super::{Chunk, MathsBlock, Paragraph, ScopeVariant};
 
@@ -51,5 +54,25 @@ impl TryFrom<ast2::Scope> for Scope {
             Paragraph::from_chunks(MathsBlock::from_chunks(chunks)?),
             variant.into(),
         ))
+    }
+}
+
+impl Validate for Scope {
+    fn validate(&self) -> Result<(), crate::InternalError> {
+        for chunk in self.chunks() {
+            chunk.validate()?
+        }
+
+        Ok(())
+    }
+}
+
+impl Lines for Scope {
+    fn lines(&self) -> u32 {
+        self.chunks()
+            .iter()
+            .map(|chunk| chunk.lines() - 1)
+            .sum::<u32>()
+            + 1
     }
 }

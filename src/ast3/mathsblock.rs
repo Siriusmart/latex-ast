@@ -1,6 +1,7 @@
 use crate::{
     ast2,
     ast3::{ChunkVariant, MathsVariant},
+    traits::{Lines, Validate},
 };
 
 use super::{Chunk, MathsType};
@@ -21,6 +22,26 @@ impl MathsBlock {
             r#type,
             content,
         }
+    }
+}
+
+impl Validate for MathsBlock {
+    fn validate(&self) -> Result<(), crate::InternalError> {
+        for chunk in self.content.iter() {
+            chunk.validate()?
+        }
+
+        Ok(())
+    }
+}
+
+impl Lines for MathsBlock {
+    fn lines(&self) -> u32 {
+        self.content
+            .iter()
+            .map(|chunk| chunk.lines() - 1)
+            .sum::<u32>()
+            + 1
     }
 }
 

@@ -3,6 +3,7 @@ use std::{collections::HashMap, str::FromStr};
 use crate::{
     ast2,
     ast3::{Environment, MathsBlock, Paragraph},
+    traits::{Lines, Validate},
 };
 
 use super::{Chunk, Scope};
@@ -23,6 +24,24 @@ pub struct Document {
     body_end_prec: String,
 
     trailing: Vec<Chunk>,
+}
+
+impl Validate for Document {
+    fn validate(&self) -> Result<(), crate::InternalError> {
+        todo!()
+    }
+}
+
+impl Lines for Document {
+    fn lines(&self) -> u32 {
+        self.preamable
+            .iter()
+            .chain(self.body.iter())
+            .chain(self.trailing.iter())
+            .map(|chunk| chunk.lines() - 1)
+            .sum::<u32>()
+            + 1
+    }
 }
 
 impl Document {

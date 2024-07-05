@@ -1,4 +1,7 @@
-use crate::ast2;
+use crate::{
+    ast1, ast2,
+    traits::{Lines, Validate},
+};
 
 use super::Scope;
 
@@ -60,5 +63,39 @@ impl TryFrom<ast2::Command> for Command {
         }
 
         Ok(Self::new(label, args_new))
+    }
+}
+
+impl Validate for Command {
+    fn validate(&self) -> Result<(), crate::InternalError> {
+        if self.label.len() != 1 {
+            for c in self.label.chars() {
+                if matches!(c, '\\' | '%')
+                    || ast1::ScopeVariant::is_opening(c)
+                    || ast1::ScopeVariant::is_closing(c)
+                {
+                    return Err(crate::InternalError::UnsanitisedCharInString(c));
+                }
+            }
+        }
+
+        for (_, arg) in self.arguments.iter() {
+            arg.validate()?
+        }
+
+        Ok(())
+    }
+}
+
+impl Lines for Command {
+    fn lines(&self) -> u32 {
+        let mut total = self.label.chars().filter(|c| c == &'\n').count() as u32;
+
+        for (prec, arg) in self.arguments.iter() {
+            total += prec.chars().filter(|c| c == &'\n').count() as u32;
+            total += arg.lines() - 1
+        }
+
+        total + 1
     }
 }

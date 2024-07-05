@@ -1,4 +1,7 @@
-use crate::ast2;
+use crate::{
+    ast1, ast2,
+    traits::{Lines, Validate},
+};
 
 use super::{Chunk, MathsBlock, Paragraph, Scope};
 
@@ -72,5 +75,51 @@ impl TryFrom<ast2::Environment> for Environment {
             prec_begin,
             prec_end,
         ))
+    }
+}
+
+impl Validate for Environment {
+    fn validate(&self) -> Result<(), crate::InternalError> {
+        for c in self.label.chars() {
+            if matches!(c, '\\' | '%')
+                || ast1::ScopeVariant::is_opening(c)
+                || ast1::ScopeVariant::is_closing(c)
+            {
+                return Err(crate::InternalError::UnsanitisedCharInString(c));
+            }
+        }
+
+        for (_, arg) in self.arguments.iter() {
+            arg.validate()?
+        }
+
+        for chunk in self.content.iter() {
+            chunk.validate()?
+        }
+
+        Ok(())
+    }
+}
+
+impl Lines for Environment {
+    fn lines(&self) -> u32 {
+        let mut lines = self.label.chars().filter(|c| c == &'\n').count() as u32 * 2;
+        lines += self
+            .prec_begin
+            .chars()
+            .chain(self.prec_end.chars())
+            .filter(|c| c == &'\n')
+            .count() as u32;
+
+        for (prec, arg) in self.arguments.iter() {
+            lines += prec.chars().filter(|c| c == &'\n').count() as u32;
+            lines += arg.lines() - 1;
+        }
+
+        for chunk in self.content.iter() {
+            lines += chunk.lines() - 1;
+        }
+
+        lines + 1
     }
 }

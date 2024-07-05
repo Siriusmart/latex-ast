@@ -1,3 +1,5 @@
+use crate::traits::{Lines, Validate};
+
 use super::ChunkVariant;
 
 /// A chunk is a block of self contained content
@@ -36,5 +38,17 @@ impl Chunk {
     /// Returns all fields of this struct
     pub fn decompose(self) -> (u32, ChunkVariant) {
         (self.line_no, self.variant)
+    }
+}
+
+impl Validate for Chunk {
+    fn validate(&self) -> Result<(), crate::InternalError> {
+        self.variant().validate()
+    }
+}
+
+impl Lines for Chunk {
+    fn lines(&self) -> u32 {
+        self.variant.lines()
     }
 }
