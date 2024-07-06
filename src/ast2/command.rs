@@ -1,4 +1,5 @@
 use std::fmt::Display;
+use std::fmt::Write;
 
 use crate::{
     ast1, ast3,
@@ -23,7 +24,16 @@ pub struct Command {
 
 impl Display for Command {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("{}", ast1::Command::from(self.clone())))
+        f.write_fmt(format_args!(
+            "\\{}{}",
+            self.label,
+            self.arguments
+                .iter()
+                .fold(String::new(), |mut s, (scope, trailing)| {
+                    let _ = write!(s, "{scope}{trailing}");
+                    s
+                })
+        ))
     }
 }
 

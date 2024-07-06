@@ -1,3 +1,6 @@
+use std::fmt::Display;
+use std::fmt::Write;
+
 use crate::{
     ast1, ast2,
     traits::{Lines, Validate},
@@ -20,6 +23,7 @@ pub struct Environment {
 }
 
 impl Environment {
+    /// Constructs a new Environment
     pub fn new(
         label: String,
         arguments: Vec<(String, Scope)>,
@@ -41,7 +45,7 @@ impl Environment {
         Ok(out)
     }
 
-    /// Constructs a new Environment
+    /// Constructs a new Environment without checking
     pub fn new_unchecked(
         label: String,
         arguments: Vec<(String, Scope)>,
@@ -143,5 +147,27 @@ impl Lines for Environment {
         }
 
         lines + 1
+    }
+}
+
+impl Display for Environment {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!(
+            r#"\begin{}{{{}}}{}{}\end{}{{{}}}"#,
+            self.prec_begin,
+            self.label,
+            self.arguments
+                .iter()
+                .fold(String::new(), |mut output, (s, sc)| {
+                    let _ = write!(output, "{s}{sc}");
+                    output
+                }),
+            self.content
+                .iter()
+                .map(ToString::to_string)
+                .collect::<String>(),
+            self.prec_end,
+            self.label
+        ))
     }
 }

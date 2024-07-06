@@ -179,6 +179,7 @@ enum Buffer {
 }
 
 impl Buffer {
+    /// Checkes whether a command has no attached scopes (arguments)
     pub fn no_scope(&self) -> bool {
         match self {
             Self::Command { scopes, .. } => scopes.is_empty(),
@@ -186,6 +187,7 @@ impl Buffer {
         }
     }
 
+    /// Create a scope buffer from variant
     pub fn scope(variant: ScopeVariant) -> Self {
         Self::Scope {
             content: String::new(),
@@ -194,6 +196,7 @@ impl Buffer {
         }
     }
 
+    /// Create a command buffer
     pub fn command() -> Self {
         Self::Command {
             label: String::new(),
@@ -203,6 +206,7 @@ impl Buffer {
         }
     }
 
+    /// Create a text buffer
     pub fn text() -> Self {
         Self::Text {
             content: String::new(),
@@ -219,7 +223,7 @@ impl Buffer {
         }
     }
 
-    /// push a str to buffer
+    /// Push a str to buffer
     pub fn push_str(&mut self, s: &str) {
         match self {
             Self::Scope { content, .. } => content.push_str(s),
@@ -229,7 +233,7 @@ impl Buffer {
         }
     }
 
-    /// push a scope to command arguments
+    /// Push a scope to command arguments
     pub fn push_scope(&mut self, variant: ScopeVariant) {
         match self {
             Buffer::Command {
@@ -411,7 +415,7 @@ impl FromStr for Document {
                     c if *depth == 0 && ScopeVariant::is_opening(c) => {
                         buffer.push_scope(ScopeVariant::from_opening(c))
                     }
-                    c if *depth == 0 && c.is_ascii_whitespace() => trailing.push(c),
+                    c if *depth == 0 && c.is_whitespace() => trailing.push(c),
                     c if *depth == 0 && escaped => {
                         let trailing = trailing.clone();
                         flush!();

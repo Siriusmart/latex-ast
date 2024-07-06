@@ -26,9 +26,9 @@ impl Display for ChunkVariant {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Text(s) => f.write_str(s),
-            Self::Command(c) => f.write_fmt(format_args!("{c}")),
-            Self::Scope(s) => f.write_fmt(format_args!("{s}")),
-            Self::Environment(e) => f.write_fmt(format_args!("{e}")),
+            Self::Command(c) => c.fmt(f),
+            Self::Scope(s) => s.fmt(f),
+            Self::Environment(e) => e.fmt(f),
         }
     }
 }

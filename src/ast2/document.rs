@@ -202,6 +202,7 @@ impl TryFrom<crate::ast1::Document> for Document {
 
         let mut buffer_stack = Vec::new();
         let mut buffer_start = 0;
+        let mut env_args = Vec::new();
         let mut buffer: Vec<ast1::Chunk> = Vec::new();
         let mut prec_begin = String::new();
 
@@ -294,6 +295,8 @@ impl TryFrom<crate::ast1::Document> for Document {
                                         .sum::<usize>()
                                         as u32;
                                 prec_begin = prec.to_string();
+
+                                env_args = c.arguments_owned().into_iter().skip(1).collect();
                             } else {
                                 push_buffer!(ast1::ChunkVariant::Command(c));
                             }
@@ -323,9 +326,9 @@ impl TryFrom<crate::ast1::Document> for Document {
                             buffer_stack.pop().unwrap();
 
                             if buffer_stack.is_empty() {
-                                let mut arguments = c.arguments_owned();
+                                let (prec_end, label) = c.arguments_owned().remove(0);
+                                let arguments = std::mem::take(&mut env_args);
 
-                                let (prec_end, label) = arguments.remove(0);
                                 let mut args_new = Vec::with_capacity(arguments.len());
 
                                 for (prec, scope) in arguments {

@@ -1,13 +1,13 @@
 use std::fmt::Display;
+use std::fmt::Write;
 
 use crate::{
-    ast1::{self, IntoChunks},
-    ast3,
+    ast1, ast3,
     traits::{Lines, Validate},
     InternalError,
 };
 
-use super::{Chunk, ChunkVariant, IntoChunks as IntoChunks3, Scope};
+use super::{Chunk, IntoChunks as IntoChunks3, Scope};
 
 /// An environment is a scope associated with a command and its arguments
 #[derive(Clone)]
@@ -24,16 +24,35 @@ pub struct Environment {
 
 impl Display for Environment {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // f.write_fmt(format_args!(
+        //     "{}",
+        //     ast1::Document::new_unchecked(
+        //         Chunk::new_unchecked(1, ChunkVariant::Environment(self.clone())).into_chunks()
+        //     )
+        // ))
+
         f.write_fmt(format_args!(
-            "{}",
-            ast1::Document::new_unchecked(
-                Chunk::new_unchecked(1, ChunkVariant::Environment(self.clone())).into_chunks()
-            )
+            r#"\begin{}{{{}}}{}{}\end{}{{{}}}"#,
+            self.prec_begin,
+            self.label,
+            self.arguments
+                .iter()
+                .fold(String::new(), |mut output, (s, sc)| {
+                    let _ = write!(output, "{s}{sc}");
+                    output
+                }),
+            self.content
+                .iter()
+                .map(ToString::to_string)
+                .collect::<String>(),
+            self.prec_end,
+            self.label
         ))
     }
 }
 
 impl Environment {
+    /// Constructs a new Environment
     pub fn new(
         label: String,
         arguments: Vec<(String, Scope)>,
@@ -55,7 +74,7 @@ impl Environment {
         Ok(out)
     }
 
-    /// Constructs a new Environment
+    /// Constructs a new Environment without checking
     pub fn new_unchecked(
         label: String,
         arguments: Vec<(String, Scope)>,

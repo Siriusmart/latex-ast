@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::{
     ast2,
     traits::{Lines, Validate},
@@ -82,5 +84,19 @@ impl Lines for Scope {
             .map(|chunk| chunk.lines() - 1)
             .sum::<u32>()
             + 1
+    }
+}
+
+impl Display for Scope {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!(
+            "{}{}{}",
+            self.variant.open(),
+            self.chunks
+                .iter()
+                .map(ToString::to_string)
+                .collect::<String>(),
+            self.variant.close()
+        ))
     }
 }

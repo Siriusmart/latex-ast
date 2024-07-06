@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::{
     ast2::{self, IntoChunks},
     traits::{Lines, Validate},
@@ -103,5 +105,11 @@ impl IntoChunks for Chunk {
                 ast2::ChunkVariant::Text(s),
             )],
         }
+    }
+}
+
+impl Display for Chunk {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.variant.fmt(f)
     }
 }

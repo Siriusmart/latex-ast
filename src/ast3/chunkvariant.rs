@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::{
     ast1,
     traits::{Lines, Validate},
@@ -28,12 +30,21 @@ impl Validate for ChunkVariant {
     fn validate(&self) -> Result<(), crate::InternalError> {
         match self {
             Self::Text(s) => {
+                let mut consec = false;
                 for c in s.chars() {
                     if matches!(c, '\\' | '%')
                         || ast1::ScopeVariant::is_opening(c)
                         || ast1::ScopeVariant::is_closing(c)
                     {
                         return Err(crate::InternalError::UnsanitisedCharInString(c));
+                    } else if c == '\n' {
+                        if consec {
+                            return Err(crate::InternalError::UnbrokenParagraph);
+                        }
+
+                        consec = true
+                    } else if !c.is_whitespace() {
+                        consec = false;
                     }
                 }
             }
@@ -74,6 +85,18 @@ impl Lines for ChunkVariant {
             Self::Scope(sc) => sc.lines(),
             Self::Environment(e) => e.lines(),
             Self::MathsBlock(mb) => mb.lines(),
+        }
+    }
+}
+
+impl Display for ChunkVariant {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::ParagraphBreak(s) | Self::Text(s) => f.write_str(s),
+            Self::MathsBlock(mb) => mb.fmt(f),
+            Self::Command(c) => c.fmt(f),
+            Self::Scope(sc) => sc.fmt(f),
+            Self::Environment(env) => env.fmt(f),
         }
     }
 }

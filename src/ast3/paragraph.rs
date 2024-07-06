@@ -1,8 +1,10 @@
 use super::{Chunk, ChunkVariant};
 
+/// Struct for paragraph handling during conversion
 pub struct Paragraph;
 
 impl Paragraph {
+    /// Add paragraph breaks into `Vec<Chunk>`
     pub fn from_chunks(chunks: Vec<Chunk>) -> Vec<Chunk> {
         let mut new = Vec::new();
 

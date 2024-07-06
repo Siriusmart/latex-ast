@@ -16,6 +16,8 @@ pub enum InternalError {
     BeginCommand,
     /// `end` is used as a command
     EndCommand,
+    /// ParagraphBreak is not added for Text
+    UnbrokenParagraph,
 }
 
 impl Display for InternalError {

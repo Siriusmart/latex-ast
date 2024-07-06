@@ -4,11 +4,10 @@
 //!
 //! - [x] Stage 1: document ➡ vector of chunks
 //! - [x] Stage 2: stage 1 ➡ environment-based AST
-//! - [x] Stage 3 (undocumented): stage 2 ➡ handles paragraphs and inline maths
-//! - [ ] Stage 4: stage 3 ➡ environments handled uniquely
+//! - [x] Stage 3: stage 2 ➡ handles paragraphs and inline maths
+//! - [ ] Stage 4: stage 3 ➡ programmatic handling/querying of chunks
 //!
-//! Currently there are no sanitisation checks for modifications to AST stage 3,
-//! please do so with extreme caution.
+//! Missing sanitisation checks for line numbers for constructing individual chunks.
 
 pub mod ast1;
 pub mod ast2;

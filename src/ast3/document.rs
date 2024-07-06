@@ -7,8 +7,11 @@ use crate::{
     InternalError,
 };
 
-use super::{Chunk, ChunkVariant, Scope};
+use super::{Chunk, ChunkVariant, Command, Scope};
 
+/// Main struct for stage 3 AST
+///
+/// Display `{}` reconstructs the original document
 #[derive(Default, Clone)]
 #[cfg_attr(feature = "debug", derive(Debug))]
 #[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
@@ -62,6 +65,7 @@ impl Lines for Document {
 }
 
 impl Document {
+    /// Create new document
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         preamable: Vec<Chunk>,
@@ -87,6 +91,7 @@ impl Document {
         Ok(out)
     }
 
+    /// Create new document without checking
     #[allow(clippy::too_many_arguments)]
     pub fn new_unchecked(
         preamable: Vec<Chunk>,
@@ -110,18 +115,22 @@ impl Document {
         }
     }
 
+    /// Returns the chunks representing the preamable
     pub fn chunks_preamable(&self) -> &Vec<Chunk> {
         &self.preamable
     }
 
+    /// Returns the chunks representing the body
     pub fn chunks_body(&self) -> &Vec<Chunk> {
         &self.body
     }
 
+    /// Returns the chunks representing the trailing
     pub fn chunks_trailing(&self) -> &Vec<Chunk> {
         &self.trailing
     }
 
+    /// Push a Chunk to a `Vec<Chunk>` without checking
     fn push_chunk_vec_unchecked(vec: &mut Vec<Chunk>, chunk: Chunk) {
         if let ChunkVariant::Text(s) = chunk.variant() {
             if let Some(last) = vec.last_mut() {
@@ -135,6 +144,7 @@ impl Document {
         vec.push(chunk)
     }
 
+    /// Push a Chunk to a `Vec<Chunk>`
     fn push_chunk_vec(vec: &mut Vec<Chunk>, chunk: Chunk) -> Result<(), InternalError> {
         chunk.validate()?;
 
@@ -154,6 +164,7 @@ impl Document {
         Ok(())
     }
 
+    /// Push a ChunkVariant to a `Vec<Chunk>` without checking
     fn push_vec_unchecked(vec: &mut Vec<Chunk>, variant: ChunkVariant) {
         let line_no = vec
             .last()
@@ -162,60 +173,74 @@ impl Document {
         Self::push_chunk_vec_unchecked(vec, Chunk::new_unchecked(line_no, variant));
     }
 
+    /// Push a ChunkVariant to a `Vec<Chunk>`
     fn push_vec(vec: &mut Vec<Chunk>, variant: ChunkVariant) -> Result<(), InternalError> {
         variant.validate()?;
         Self::push_vec_unchecked(vec, variant);
         Ok(())
     }
 
+    /// Push a ChunkVarint to body
     pub fn push_body(&mut self, variant: ChunkVariant) -> Result<(), InternalError> {
         Self::push_vec(&mut self.body, variant)
     }
 
+    /// Push a ChunkVarint to body without checking
     pub fn push_body_unchecked(&mut self, variant: ChunkVariant) {
         Self::push_vec_unchecked(&mut self.body, variant)
     }
 
+    /// Push a Chunk to body
     pub fn push_body_chunk(&mut self, chunk: Chunk) -> Result<(), InternalError> {
         Self::push_chunk_vec(&mut self.body, chunk)
     }
 
+    /// Push a Chunk to body without checking
     pub fn push_body_chunk_unchecked(&mut self, chunk: Chunk) {
         Self::push_chunk_vec_unchecked(&mut self.body, chunk)
     }
 
+    /// Push a ChunkVariant to preamable
     pub fn push_preamable(&mut self, variant: ChunkVariant) -> Result<(), InternalError> {
         Self::push_vec(&mut self.preamable, variant)
     }
 
+    /// Push a ChunkVariant to preamable without checking
     pub fn push_preamable_unchecked(&mut self, variant: ChunkVariant) {
         Self::push_vec_unchecked(&mut self.preamable, variant)
     }
 
+    /// Push a Chunk to preamable
     pub fn push_preamable_chunk(&mut self, chunk: Chunk) -> Result<(), InternalError> {
         Self::push_chunk_vec(&mut self.preamable, chunk)
     }
 
+    /// Push a Chunk to preamable without checking
     pub fn push_preamable_chunk_unchecked(&mut self, chunk: Chunk) {
         Self::push_chunk_vec_unchecked(&mut self.preamable, chunk)
     }
 
+    /// Push a ChunkVarint to trailing
     pub fn push_trailing(&mut self, variant: ChunkVariant) -> Result<(), InternalError> {
         Self::push_vec(&mut self.trailing, variant)
     }
 
+    /// Push a ChunkVariant to trailing without checking
     pub fn push_trailing_unchecked(&mut self, variant: ChunkVariant) {
         Self::push_vec_unchecked(&mut self.trailing, variant)
     }
 
+    /// Push a Chunk to trailing
     pub fn push_trailing_chunk(&mut self, chunk: Chunk) -> Result<(), InternalError> {
         Self::push_chunk_vec(&mut self.trailing, chunk)
     }
 
+    /// Push a Chunk to trailing without checking
     pub fn push_trailing_chunk_unchecked(&mut self, chunk: Chunk) {
         Self::push_chunk_vec_unchecked(&mut self.trailing, chunk)
     }
 
+    /// Returns all fields of this struct
     #[allow(clippy::type_complexity)]
     pub fn decompose(
         self,
@@ -339,6 +364,55 @@ impl FromStr for Document {
 
 impl Display for Document {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("{}", ast2::Document::from(self.clone())))
+        f.write_str(
+            self.preamable
+                .iter()
+                .chain(
+                    [Chunk::new_unchecked(
+                        1,
+                        ChunkVariant::Command(Command::new_unchecked(
+                            "begin".to_string(),
+                            [(
+                                self.body_begin_prec.clone(),
+                                Scope::new_unchecked(
+                                    vec![Chunk::new_unchecked(
+                                        1,
+                                        ChunkVariant::Text("document".to_string()),
+                                    )],
+                                    super::ScopeVariant::Curly,
+                                ),
+                            )]
+                            .into_iter()
+                            .chain(self.body_args.clone())
+                            .collect(),
+                        )),
+                    )]
+                    .iter(),
+                )
+                .chain(self.body.iter())
+                .chain(
+                    [Chunk::new_unchecked(
+                        1,
+                        ChunkVariant::Command(Command::new_unchecked(
+                            "end".to_string(),
+                            vec![(
+                                self.body_begin_prec.clone(),
+                                Scope::new_unchecked(
+                                    vec![Chunk::new_unchecked(
+                                        1,
+                                        ChunkVariant::Text("document".to_string()),
+                                    )],
+                                    super::ScopeVariant::Curly,
+                                ),
+                            )],
+                        )),
+                    )]
+                    .iter(),
+                )
+                .chain(self.trailing.iter())
+                .map(ToString::to_string)
+                .collect::<String>()
+                .as_str(),
+        )
     }
 }

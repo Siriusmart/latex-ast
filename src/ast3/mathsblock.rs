@@ -1,12 +1,15 @@
+use std::fmt::Display;
+
 use crate::{
     ast2::{self, IntoChunks},
-    ast3::{ChunkVariant, MathsVariant},
+    ast3::{ChunkVariant, MathsVariant, Paragraph},
     traits::{Lines, Validate},
     InternalError,
 };
 
 use super::{Chunk, MathsType};
 
+/// A block of maths environment, surrounded by $, $$, \[ or \(
 #[derive(Clone)]
 #[cfg_attr(feature = "debug", derive(Debug))]
 #[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
@@ -17,6 +20,7 @@ pub struct MathsBlock {
 }
 
 impl MathsBlock {
+    /// Construct a new MathsBlock
     pub fn new(
         variant: MathsVariant,
         r#type: MathsType,
@@ -27,6 +31,7 @@ impl MathsBlock {
         Ok(out)
     }
 
+    /// Construct a new MathsBlock without checking
     pub fn new_unchecked(variant: MathsVariant, r#type: MathsType, content: Vec<Chunk>) -> Self {
         Self {
             variant,
@@ -57,6 +62,7 @@ impl Lines for MathsBlock {
 }
 
 impl MathsBlock {
+    /// Maps a `Vec<ast2::Chunk>` to `Vec<Chunk>` with MathsBlocks
     pub fn from_chunks(chunks: Vec<ast2::Chunk>) -> Result<Vec<Chunk>, crate::Error> {
         #[derive(PartialEq)]
         enum MathsMode {
@@ -182,13 +188,13 @@ impl MathsBlock {
                 {
                     let mut cursor_line_no = line_no;
                     let mut text_buffer = String::new();
-                    let mut text_buffer_line = 1;
+                    let mut text_buffer_line = cursor_line_no;
 
                     macro_rules! push_str {
                         () => {
                             if !text_buffer.is_empty() {
                                 out.push(Chunk::new_unchecked(
-                                    text_buffer_line + line_no - 1,
+                                    text_buffer_line,
                                     ChunkVariant::Text(std::mem::take(&mut text_buffer)),
                                 ))
                             }
@@ -243,7 +249,9 @@ impl MathsBlock {
                                                     .collect(),
                                             )?,
                                         )),
-                                    ))
+                                    ));
+
+                                    text_buffer_line = cursor_line_no;
                                 }
                                 MathsMode::SingleDollar(MathsVariant::Dollars) => {
                                     mode = MathsMode::None;
@@ -273,7 +281,9 @@ impl MathsBlock {
                                                     .collect(),
                                             )?,
                                         )),
-                                    ))
+                                    ));
+
+                                    text_buffer_line = cursor_line_no;
                                 }
                                 MathsMode::SingleDollar(MathsVariant::Brackets)
                                 | MathsMode::DoubleDollar(MathsVariant::Brackets) => {}
@@ -283,19 +293,7 @@ impl MathsBlock {
                         }
                     }
 
-                    if !text_buffer.is_empty() {
-                        if mode == MathsMode::None {
-                            out.push(Chunk::new_unchecked(
-                                text_buffer_line + line_no - 1,
-                                ChunkVariant::Text(text_buffer),
-                            ))
-                        } else {
-                            buffer.push(ast2::Chunk::new_unchecked(
-                                text_buffer_line + line_no - 1,
-                                ast2::ChunkVariant::Text(text_buffer),
-                            ))
-                        }
-                    }
+                    push_str!()
                 }
                 _ => buffer.push(ast2::Chunk::new_unchecked(line_no, variant)),
             }
@@ -307,6 +305,8 @@ impl MathsBlock {
                 crate::ErrorType::UnclosedMaths,
             ));
         }
+
+        out = Paragraph::from_chunks(out);
 
         Ok(out)
     }
@@ -396,5 +396,24 @@ impl IntoChunks for MathsBlock {
         }
 
         out
+    }
+}
+
+impl Display for MathsBlock {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let (open, close) = match (&self.variant, &self.r#type) {
+            (MathsVariant::Brackets, MathsType::Outline) => ("\\[", "\\]"),
+            (MathsVariant::Brackets, MathsType::Inline) => ("\\(", "\\)"),
+            (MathsVariant::Dollars, MathsType::Outline) => ("$$", "$$"),
+            (MathsVariant::Dollars, MathsType::Inline) => ("$", "$"),
+        };
+
+        f.write_fmt(format_args!(
+            "{open}{}{close}",
+            self.content
+                .iter()
+                .map(ToString::to_string)
+                .collect::<String>(),
+        ))
     }
 }

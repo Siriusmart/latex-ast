@@ -1,11 +1,11 @@
 use std::{collections::HashMap, str::FromStr};
 
-use ast3::{Chunk, Command, Environment, Scope};
+use ast3::{Chunk, Command, Environment, MathsBlock, Scope};
 
 use crate::*;
 
 #[test]
-fn simple() {
+fn basic() {
     let content = r#"
 \documentclass{article}
 
@@ -13,9 +13,12 @@ fn simple() {
 
 \begin{document}
     Hello
-    \begin{itemize}
+    \begin{itemize}{item}
         \item test
         \item test2
+        \item test3 $$hello
+
+world$$
     \end{itemize}
 \end{document}
         "#
@@ -81,7 +84,15 @@ fn simple() {
                 ast3::ChunkVariant::Environment(
                     Environment::new(
                         "itemize".to_string(),
-                        Vec::new(),
+                        vec![(
+                            String::new(),
+                            Scope::new(
+                                vec![Chunk::new(1, ast3::ChunkVariant::Text("item".to_string()))
+                                    .unwrap()],
+                                ast3::ScopeVariant::Curly,
+                            )
+                            .unwrap(),
+                        )],
                         vec![
                             Chunk::new(1, ast3::ChunkVariant::Text("\n        ".to_string()))
                                 .unwrap(),
@@ -101,8 +112,47 @@ fn simple() {
                                 ),
                             )
                             .unwrap(),
-                            Chunk::new(3, ast3::ChunkVariant::Text(" test2\n    ".to_string()))
+                            Chunk::new(3, ast3::ChunkVariant::Text(" test2\n        ".to_string()))
                                 .unwrap(),
+                            Chunk::new(
+                                4,
+                                ast3::ChunkVariant::Command(
+                                    Command::new("item".to_string(), Vec::new()).unwrap(),
+                                ),
+                            )
+                            .unwrap(),
+                            Chunk::new(4, ast3::ChunkVariant::Text(" test3 ".to_string())).unwrap(),
+                            Chunk::new(
+                                4,
+                                ast3::ChunkVariant::MathsBlock(
+                                    MathsBlock::new(
+                                        ast3::MathsVariant::Dollars,
+                                        ast3::MathsType::Outline,
+                                        vec![
+                                            Chunk::new(
+                                                1,
+                                                ast3::ChunkVariant::Text("hello".to_string()),
+                                            )
+                                            .unwrap(),
+                                            Chunk::new(
+                                                1,
+                                                ast3::ChunkVariant::ParagraphBreak(
+                                                    "\n\n".to_string(),
+                                                ),
+                                            )
+                                            .unwrap(),
+                                            Chunk::new(
+                                                3,
+                                                ast3::ChunkVariant::Text("world".to_string()),
+                                            )
+                                            .unwrap(),
+                                        ],
+                                    )
+                                    .unwrap(),
+                                ),
+                            )
+                            .unwrap(),
+                            Chunk::new(6, ast3::ChunkVariant::Text("\n    ".to_string())).unwrap(),
                         ],
                         String::new(),
                         String::new(),
@@ -111,7 +161,7 @@ fn simple() {
                 ),
             )
             .unwrap(),
-            Chunk::new(6, ast3::ChunkVariant::Text("\n".to_string())).unwrap(),
+            Chunk::new(9, ast3::ChunkVariant::Text("\n".to_string())).unwrap(),
         ],
         Vec::new(),
         String::new(),
@@ -120,5 +170,39 @@ fn simple() {
     )
     .unwrap();
 
+    println!("{ast}");
+    assert_eq!(content, ast.to_string().as_str());
     assert_eq!(dbg!(expected), dbg!(ast));
+}
+
+#[test]
+fn begin_command() {
+    assert_eq!(
+        Err(InternalError::BeginCommand),
+        ast3::Command::new("begin".to_string(), Vec::new())
+    )
+}
+
+#[test]
+fn end_command() {
+    assert_eq!(
+        Err(InternalError::EndCommand),
+        ast3::Command::new("end".to_string(), Vec::new())
+    )
+}
+
+#[test]
+fn paragraphbreak_tooshort() {
+    assert_eq!(
+        Err(InternalError::ParagraphBreakTooShort),
+        ast3::Chunk::new(1, ast3::ChunkVariant::ParagraphBreak("\n".to_string()))
+    );
+}
+
+#[test]
+fn paragraphbreak_nonwhitespace() {
+    assert_eq!(
+        Err(InternalError::UnbrokenParagraph),
+        ast3::Chunk::new(1, ast3::ChunkVariant::Text("\n\n".to_string()))
+    );
 }

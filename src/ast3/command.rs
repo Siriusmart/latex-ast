@@ -1,3 +1,6 @@
+use std::fmt::Display;
+use std::fmt::Write;
+
 use crate::{
     ast1, ast2,
     traits::{Lines, Validate},
@@ -111,5 +114,20 @@ impl Lines for Command {
         }
 
         total + 1
+    }
+}
+
+impl Display for Command {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!(
+            "\\{}{}",
+            self.label,
+            self.arguments
+                .iter()
+                .fold(String::new(), |mut s, (scope, trailing)| {
+                    let _ = write!(s, "{scope}{trailing}");
+                    s
+                })
+        ))
     }
 }

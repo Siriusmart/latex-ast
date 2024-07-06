@@ -23,7 +23,15 @@ pub struct Scope {
 
 impl Display for Scope {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("{}", self.clone().to_ast1_scope()))
+        f.write_fmt(format_args!(
+            "{}{}{}",
+            self.variant.open(),
+            self.chunks
+                .iter()
+                .map(ToString::to_string)
+                .collect::<String>(),
+            self.variant.close()
+        ))
     }
 }
 
