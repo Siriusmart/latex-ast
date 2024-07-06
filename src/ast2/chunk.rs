@@ -34,7 +34,7 @@ impl ast1::IntoChunks for Chunk {
             match self.variant {
                 ChunkVariant::Text(s) => ast1::ChunkVariant::Text(s),
                 ChunkVariant::Scope(sc) => ast1::ChunkVariant::Scope(sc.to_ast1_scope()),
-                ChunkVariant::Command(c) => ast1::ChunkVariant::Command(c.to_ast1_command()),
+                ChunkVariant::Command(c) => ast1::ChunkVariant::Command(c.into()),
                 ChunkVariant::Environment(env) => {
                     let (label, args, content, prec_begin, prec_end) = env.decompose();
 

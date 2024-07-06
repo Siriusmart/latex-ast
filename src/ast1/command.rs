@@ -2,6 +2,7 @@ use std::fmt::Display;
 use std::fmt::Write;
 
 use crate::ast1::ScopeVariant;
+use crate::ast2;
 use crate::traits::Lines;
 use crate::traits::Validate;
 use crate::InternalError;
@@ -106,5 +107,18 @@ impl Lines for Command {
         }
 
         total + 1
+    }
+}
+
+impl From<ast2::Command> for Command {
+    fn from(value: ast2::Command) -> Self {
+        let (label, arguments) = value.decompose();
+        Command::new_unchecked(
+            label,
+            arguments
+                .into_iter()
+                .map(|(s, sc)| (s, sc.to_ast1_scope()))
+                .collect(),
+        )
     }
 }

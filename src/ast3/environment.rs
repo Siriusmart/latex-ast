@@ -1,6 +1,7 @@
 use crate::{
     ast1, ast2,
     traits::{Lines, Validate},
+    InternalError,
 };
 
 use super::{Chunk, MathsBlock, Paragraph, Scope};
@@ -19,8 +20,29 @@ pub struct Environment {
 }
 
 impl Environment {
-    /// Constructs a new Environment
     pub fn new(
+        label: String,
+        arguments: Vec<(String, Scope)>,
+        content: Vec<Chunk>,
+        prec_begin: String,
+        prec_end: String,
+    ) -> Result<Self, InternalError> {
+        let out = Self {
+            label,
+            arguments,
+            content,
+
+            prec_begin,
+            prec_end,
+        };
+
+        out.validate()?;
+
+        Ok(out)
+    }
+
+    /// Constructs a new Environment
+    pub fn new_unchecked(
         label: String,
         arguments: Vec<(String, Scope)>,
         content: Vec<Chunk>,
@@ -68,7 +90,7 @@ impl TryFrom<ast2::Environment> for Environment {
             args_new.push((prec, scope.try_into()?));
         }
 
-        Ok(Self::new(
+        Ok(Self::new_unchecked(
             label,
             args_new,
             Paragraph::from_chunks(MathsBlock::from_chunks(content)?),

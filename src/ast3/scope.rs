@@ -1,6 +1,7 @@
 use crate::{
     ast2,
     traits::{Lines, Validate},
+    InternalError,
 };
 
 use super::{Chunk, MathsBlock, Paragraph, ScopeVariant};
@@ -19,7 +20,14 @@ pub struct Scope {
 
 impl Scope {
     /// Create new scope from its content and the scope variant
-    pub fn new(chunks: Vec<Chunk>, variant: ScopeVariant) -> Self {
+    pub fn new(chunks: Vec<Chunk>, variant: ScopeVariant) -> Result<Self, InternalError> {
+        let out = Self { chunks, variant };
+        out.validate()?;
+        Ok(out)
+    }
+
+    /// Create new scope from its content and the scope variant without checking
+    pub fn new_unchecked(chunks: Vec<Chunk>, variant: ScopeVariant) -> Self {
         Self { chunks, variant }
     }
 
@@ -50,7 +58,7 @@ impl TryFrom<ast2::Scope> for Scope {
     fn try_from(value: ast2::Scope) -> Result<Self, Self::Error> {
         let (chunks, variant) = value.decompose();
 
-        Ok(Self::new(
+        Ok(Self::new_unchecked(
             Paragraph::from_chunks(MathsBlock::from_chunks(chunks)?),
             variant.into(),
         ))

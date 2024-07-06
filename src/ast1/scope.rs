@@ -1,11 +1,12 @@
 use std::fmt::Display;
 
 use crate::{
+    ast2,
     traits::{Lines, Validate},
     InternalError,
 };
 
-use super::{chunk::Chunk, scopevariant::ScopeVariant};
+use super::{chunk::Chunk, scopevariant::ScopeVariant, IntoChunks};
 
 /// A scoped block
 ///
@@ -84,5 +85,18 @@ impl Lines for Scope {
             .map(|chunk| chunk.lines() - 1)
             .sum::<u32>()
             + 1
+    }
+}
+
+impl From<ast2::Scope> for Scope {
+    fn from(value: ast2::Scope) -> Self {
+        let (chunks, variant) = value.decompose();
+        Scope::new_unchecked(
+            chunks
+                .into_iter()
+                .flat_map(ast2::Chunk::into_chunks)
+                .collect(),
+            variant.into(),
+        )
     }
 }

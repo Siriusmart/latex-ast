@@ -4,7 +4,7 @@ use crate::{
     InternalError,
 };
 
-use super::{Chunk, ChunkVariant, Environment};
+use super::{Chunk, ChunkVariant, Environment, IntoChunks};
 
 use std::{fmt::Display, mem, str::FromStr};
 
@@ -139,9 +139,58 @@ impl Lines for Document {
 
 impl From<ast3::Document> for Document {
     fn from(value: ast3::Document) -> Self {
-        let (_, _, preamable, body, _, body_args, body_begin_prec, body_end_prec, trailing) =
+        let (_, _, preamable, body, body_args, body_begin_prec, body_end_prec, trailing) =
             value.decompose();
-        todo!()
+
+        let preamable = preamable
+            .into_iter()
+            .flat_map(ast3::Chunk::into_chunks)
+            .collect::<Vec<_>>();
+        let prem_lines = preamable.iter().map(|chunk| chunk.lines() - 1).sum::<u32>();
+
+        let mut out = Document::new_unchecked(preamable);
+
+        let body_offset = body_args
+            .iter()
+            .map(|(s, arg)| s.chars().filter(|c| c == &'\n').count() as u32 + arg.lines() - 1)
+            .sum::<u32>()
+            + body_begin_prec.chars().filter(|c| c == &'\n').count() as u32;
+        let body_chunks = body
+            .into_iter()
+            .flat_map(ast3::Chunk::into_chunks)
+            .map(|mut chunk| {
+                *chunk.line_no_mut() += body_offset;
+                chunk
+            })
+            .collect::<Vec<_>>();
+        let body = Chunk::new_unchecked(
+            prem_lines,
+            ChunkVariant::Environment(Environment::new_unchecked(
+                "document".to_string(),
+                body_args
+                    .into_iter()
+                    .map(|(s, arg)| (s, arg.into()))
+                    .collect(),
+                body_chunks,
+                body_begin_prec,
+                body_end_prec,
+            )),
+        );
+
+        let trailing_offset = body.lines() + prem_lines - 2;
+
+        out.push_chunk_unchecked(body);
+
+        trailing
+            .into_iter()
+            .flat_map(ast3::Chunk::into_chunks)
+            .map(|mut chunk| {
+                *chunk.line_no_mut() += trailing_offset;
+                chunk
+            })
+            .for_each(|chunk| out.push_chunk_unchecked(chunk));
+
+        out
     }
 }
 

@@ -2,11 +2,12 @@ use std::fmt::Display;
 
 use crate::{
     ast1::{self, IntoChunks},
+    ast3,
     traits::{Lines, Validate},
     InternalError,
 };
 
-use super::{Chunk, ChunkVariant, Scope};
+use super::{Chunk, ChunkVariant, IntoChunks as IntoChunks3, Scope};
 
 /// An environment is a scope associated with a command and its arguments
 #[derive(Clone)]
@@ -133,6 +134,26 @@ impl Environment {
             self.content,
             self.prec_begin,
             self.prec_end,
+        )
+    }
+}
+
+impl From<ast3::Environment> for Environment {
+    fn from(value: ast3::Environment) -> Self {
+        let (label, arguments, content, prec_begin, prec_end) = value.decompose();
+
+        Self::new_unchecked(
+            label,
+            arguments
+                .into_iter()
+                .map(|(s, chunk)| (s, chunk.into()))
+                .collect(),
+            content
+                .into_iter()
+                .flat_map(|chunk| chunk.into_chunks())
+                .collect(),
+            prec_begin,
+            prec_end,
         )
     }
 }

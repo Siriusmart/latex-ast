@@ -12,6 +12,10 @@ pub enum InternalError {
     ParagraphBreakTooShort,
     /// Nonwhitespace in ParagraphBreak
     ParagraghBreakNonwhitespace,
+    /// `begin` is used as a command
+    BeginCommand,
+    /// `end` is used as a command
+    EndCommand,
 }
 
 impl Display for InternalError {

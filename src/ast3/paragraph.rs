@@ -9,9 +9,9 @@ impl Paragraph {
         for chunk in chunks {
             let mut line_no = chunk.line_no();
             let mut text_buffer = String::new();
-            let mut text_buffer_line = 1;
+            let mut text_buffer_line = chunk.line_no();
             let mut buffer = String::new();
-            let mut buffer_line = 1;
+            let mut buffer_line = chunk.line_no();
             let mut consec_newlines = 0;
 
             if let ChunkVariant::Text(s) = chunk.variant() {
@@ -22,7 +22,7 @@ impl Paragraph {
                             line_no += 1;
 
                             if !text_buffer.is_empty() {
-                                new.push(Chunk::new(
+                                new.push(Chunk::new_unchecked(
                                     text_buffer_line,
                                     ChunkVariant::Text(std::mem::take(&mut text_buffer)),
                                 ));
@@ -56,7 +56,7 @@ impl Paragraph {
                             consec_newlines = 0;
                         }
                         _ => {
-                            new.push(Chunk::new(
+                            new.push(Chunk::new_unchecked(
                                 buffer_line,
                                 ChunkVariant::ParagraphBreak(std::mem::take(&mut buffer)),
                             ));
@@ -71,7 +71,7 @@ impl Paragraph {
 
                 if !buffer.is_empty() {
                     if consec_newlines > 1 {
-                        new.push(Chunk::new(
+                        new.push(Chunk::new_unchecked(
                             buffer_line,
                             ChunkVariant::ParagraphBreak(std::mem::take(&mut buffer)),
                         ));
@@ -79,11 +79,20 @@ impl Paragraph {
                         text_buffer.push_str(&buffer);
 
                         if !text_buffer.is_empty() {
-                            new.push(Chunk::new(
+                            new.push(Chunk::new_unchecked(
                                 text_buffer_line,
                                 ChunkVariant::Text(text_buffer),
                             ))
                         }
+                    }
+                } else if !text_buffer.is_empty() {
+                    text_buffer.push_str(&buffer);
+
+                    if !text_buffer.is_empty() {
+                        new.push(Chunk::new_unchecked(
+                            text_buffer_line,
+                            ChunkVariant::Text(text_buffer),
+                        ))
                     }
                 }
             } else {

@@ -18,3 +18,13 @@ impl From<crate::ast1::ScopeVariant> for ScopeVariant {
         }
     }
 }
+
+impl From<crate::ast3::ScopeVariant> for ScopeVariant {
+    fn from(value: crate::ast3::ScopeVariant) -> Self {
+        match value {
+            crate::ast3::ScopeVariant::Curly => Self::Curly,
+            crate::ast3::ScopeVariant::Round => Self::Round,
+            crate::ast3::ScopeVariant::Square => Self::Square,
+        }
+    }
+}

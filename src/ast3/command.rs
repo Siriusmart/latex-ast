@@ -1,6 +1,7 @@
 use crate::{
     ast1, ast2,
     traits::{Lines, Validate},
+    InternalError,
 };
 
 use super::Scope;
@@ -20,7 +21,14 @@ pub struct Command {
 
 impl Command {
     /// Construct new Command
-    pub fn new(label: String, arguments: Vec<(String, Scope)>) -> Self {
+    pub fn new(label: String, arguments: Vec<(String, Scope)>) -> Result<Self, InternalError> {
+        let out = Self { label, arguments };
+        out.validate()?;
+        Ok(out)
+    }
+
+    /// Construct new Command without checking
+    pub fn new_unchecked(label: String, arguments: Vec<(String, Scope)>) -> Self {
         Self { label, arguments }
     }
 
@@ -62,12 +70,18 @@ impl TryFrom<ast2::Command> for Command {
             args_new.push((prec, scope.try_into()?));
         }
 
-        Ok(Self::new(label, args_new))
+        Ok(Self::new_unchecked(label, args_new))
     }
 }
 
 impl Validate for Command {
     fn validate(&self) -> Result<(), crate::InternalError> {
+        match self.label.as_str() {
+            "begin" => return Err(crate::InternalError::BeginCommand),
+            "end" => return Err(crate::InternalError::EndCommand),
+            _ => {}
+        }
+
         if self.label.len() != 1 {
             for c in self.label.chars() {
                 if matches!(c, '\\' | '%')

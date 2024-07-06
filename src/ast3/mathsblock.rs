@@ -1,7 +1,8 @@
 use crate::{
-    ast2,
+    ast2::{self, IntoChunks},
     ast3::{ChunkVariant, MathsVariant},
     traits::{Lines, Validate},
+    InternalError,
 };
 
 use super::{Chunk, MathsType};
@@ -16,7 +17,17 @@ pub struct MathsBlock {
 }
 
 impl MathsBlock {
-    pub fn new(variant: MathsVariant, r#type: MathsType, content: Vec<Chunk>) -> Self {
+    pub fn new(
+        variant: MathsVariant,
+        r#type: MathsType,
+        content: Vec<Chunk>,
+    ) -> Result<Self, InternalError> {
+        let out = Self::new_unchecked(variant, r#type, content);
+        out.validate()?;
+        Ok(out)
+    }
+
+    pub fn new_unchecked(variant: MathsVariant, r#type: MathsType, content: Vec<Chunk>) -> Self {
         Self {
             variant,
             r#type,
@@ -107,9 +118,9 @@ impl MathsBlock {
                 {
                     mode = MathsMode::None;
                     depth = 0;
-                    out.push(Chunk::new(
+                    out.push(Chunk::new_unchecked(
                         buffer_line,
-                        ChunkVariant::MathsBlock(Self::new(
+                        ChunkVariant::MathsBlock(Self::new_unchecked(
                             MathsVariant::Brackets,
                             MathsType::Inline,
                             Self::from_chunks(std::mem::take(&mut buffer))?,
@@ -123,9 +134,9 @@ impl MathsBlock {
                 {
                     mode = MathsMode::None;
                     depth = 0;
-                    out.push(Chunk::new(
+                    out.push(Chunk::new_unchecked(
                         buffer_line,
-                        ChunkVariant::MathsBlock(Self::new(
+                        ChunkVariant::MathsBlock(Self::new_unchecked(
                             MathsVariant::Brackets,
                             MathsType::Outline,
                             Self::from_chunks(std::mem::take(&mut buffer))?,
@@ -145,16 +156,22 @@ impl MathsBlock {
                     depth -= 1
                 }
                 ast2::ChunkVariant::Scope(s) if mode == MathsMode::None => {
-                    out.push(Chunk::new(line_no, ChunkVariant::Scope(s.try_into()?)));
+                    out.push(Chunk::new_unchecked(
+                        line_no,
+                        ChunkVariant::Scope(s.try_into()?),
+                    ));
                 }
                 ast2::ChunkVariant::Environment(env) if mode == MathsMode::None => {
-                    out.push(Chunk::new(
+                    out.push(Chunk::new_unchecked(
                         line_no,
                         ChunkVariant::Environment(env.try_into()?),
                     ));
                 }
                 ast2::ChunkVariant::Command(cmd) if mode == MathsMode::None => {
-                    out.push(Chunk::new(line_no, ChunkVariant::Command(cmd.try_into()?)));
+                    out.push(Chunk::new_unchecked(
+                        line_no,
+                        ChunkVariant::Command(cmd.try_into()?),
+                    ));
                 }
                 ast2::ChunkVariant::Text(s)
                     if !matches!(
@@ -170,7 +187,7 @@ impl MathsBlock {
                     macro_rules! push_str {
                         () => {
                             if !text_buffer.is_empty() {
-                                out.push(Chunk::new(
+                                out.push(Chunk::new_unchecked(
                                     text_buffer_line + line_no - 1,
                                     ChunkVariant::Text(std::mem::take(&mut text_buffer)),
                                 ))
@@ -210,9 +227,9 @@ impl MathsBlock {
                                         ));
                                     }
 
-                                    out.push(Chunk::new(
+                                    out.push(Chunk::new_unchecked(
                                         text_buffer_line,
-                                        ChunkVariant::MathsBlock(MathsBlock::new(
+                                        ChunkVariant::MathsBlock(MathsBlock::new_unchecked(
                                             MathsVariant::Dollars,
                                             MathsType::Outline,
                                             Self::from_chunks(
@@ -240,9 +257,9 @@ impl MathsBlock {
                                         ));
                                     }
 
-                                    out.push(Chunk::new(
+                                    out.push(Chunk::new_unchecked(
                                         text_buffer_line,
-                                        ChunkVariant::MathsBlock(MathsBlock::new(
+                                        ChunkVariant::MathsBlock(MathsBlock::new_unchecked(
                                             MathsVariant::Dollars,
                                             MathsType::Inline,
                                             Self::from_chunks(
@@ -268,7 +285,7 @@ impl MathsBlock {
 
                     if !text_buffer.is_empty() {
                         if mode == MathsMode::None {
-                            out.push(Chunk::new(
+                            out.push(Chunk::new_unchecked(
                                 text_buffer_line + line_no - 1,
                                 ChunkVariant::Text(text_buffer),
                             ))
@@ -292,5 +309,92 @@ impl MathsBlock {
         }
 
         Ok(out)
+    }
+}
+
+impl IntoChunks for MathsBlock {
+    fn into_chunks(self) -> Vec<ast2::Chunk> {
+        let lines = self.lines();
+
+        match (self.variant, &self.r#type) {
+            (MathsVariant::Brackets, MathsType::Inline) => {
+                return [ast2::Chunk::new_unchecked(
+                    1,
+                    ast2::ChunkVariant::Command(ast2::Command::new_unchecked(
+                        "(".to_string(),
+                        Vec::new(),
+                    )),
+                )]
+                .into_iter()
+                .chain(self.content.into_iter().flat_map(Chunk::into_chunks))
+                .chain([ast2::Chunk::new_unchecked(
+                    lines,
+                    ast2::ChunkVariant::Command(ast2::Command::new_unchecked(
+                        ")".to_string(),
+                        Vec::new(),
+                    )),
+                )])
+                .collect()
+            }
+            (MathsVariant::Brackets, MathsType::Outline) => {
+                return [ast2::Chunk::new_unchecked(
+                    1,
+                    ast2::ChunkVariant::Command(ast2::Command::new_unchecked(
+                        "[".to_string(),
+                        Vec::new(),
+                    )),
+                )]
+                .into_iter()
+                .chain(self.content.into_iter().flat_map(Chunk::into_chunks))
+                .chain([ast2::Chunk::new_unchecked(
+                    lines,
+                    ast2::ChunkVariant::Command(ast2::Command::new_unchecked(
+                        "]".to_string(),
+                        Vec::new(),
+                    )),
+                )])
+                .collect()
+            }
+            _ => {}
+        }
+
+        let mut out: Vec<ast2::Chunk> = self
+            .content
+            .into_iter()
+            .flat_map(Chunk::into_chunks)
+            .collect();
+
+        let dollars = if matches!(self.r#type, MathsType::Inline) {
+            "$"
+        } else {
+            "$$"
+        };
+
+        if out.is_empty() {
+            return vec![ast2::Chunk::new_unchecked(
+                1,
+                ast2::ChunkVariant::Text(dollars.repeat(2)),
+            )];
+        }
+
+        if let ast2::ChunkVariant::Text(s) = out.first_mut().unwrap().variant_mut() {
+            *s = format!("{dollars}{s}")
+        } else {
+            out.insert(
+                0,
+                ast2::Chunk::new_unchecked(1, ast2::ChunkVariant::Text(dollars.to_string())),
+            )
+        }
+
+        if let ast2::ChunkVariant::Text(s) = out.last_mut().unwrap().variant_mut() {
+            *s = format!("{s}{dollars}")
+        } else {
+            out.push(ast2::Chunk::new_unchecked(
+                lines,
+                ast2::ChunkVariant::Text(dollars.to_string()),
+            ))
+        }
+
+        out
     }
 }

@@ -24,6 +24,7 @@ mod chunkvariant;
 mod command;
 mod document;
 mod environment;
+mod into_chunks;
 mod scope;
 mod scopevariant;
 
@@ -32,5 +33,6 @@ pub use chunkvariant::ChunkVariant;
 pub use command::Command;
 pub use document::Document;
 pub use environment::Environment;
+pub use into_chunks::IntoChunks;
 pub use scope::Scope;
 pub use scopevariant::ScopeVariant;

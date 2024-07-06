@@ -2,11 +2,12 @@ use std::fmt::Display;
 
 use crate::{
     ast1::{self, IntoChunks},
+    ast3,
     traits::{Lines, Validate},
     InternalError,
 };
 
-use super::{Chunk, Document, ScopeVariant};
+use super::{Chunk, Document, IntoChunks as IntoChunks2, ScopeVariant};
 
 /// A scoped block
 ///
@@ -102,5 +103,18 @@ impl TryFrom<crate::ast1::Scope> for Scope {
             chunks: Document::try_from(ast1::Document::new_unchecked(value.chunks_owned()))?
                 .chunks_owned(),
         })
+    }
+}
+
+impl From<ast3::Scope> for Scope {
+    fn from(value: ast3::Scope) -> Self {
+        let (chunks, variant) = value.decompose();
+        Scope::new_unchecked(
+            chunks
+                .into_iter()
+                .flat_map(ast3::Chunk::into_chunks)
+                .collect(),
+            variant.into(),
+        )
     }
 }

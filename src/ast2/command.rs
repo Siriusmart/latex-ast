@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 use crate::{
-    ast1,
+    ast1, ast3,
     traits::{Lines, Validate},
     InternalError,
 };
@@ -23,20 +23,7 @@ pub struct Command {
 
 impl Display for Command {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("{}", self.clone().to_ast1_command()))
-    }
-}
-
-impl Command {
-    /// Maps to `ast1::Command`
-    pub fn to_ast1_command(self) -> ast1::Command {
-        ast1::Command::new_unchecked(
-            self.label,
-            self.arguments
-                .into_iter()
-                .map(|(s, sc)| (s, sc.to_ast1_scope()))
-                .collect(),
-        )
+        f.write_fmt(format_args!("{}", ast1::Command::from(self.clone())))
     }
 }
 
@@ -97,6 +84,12 @@ impl TryFrom<crate::ast1::Command> for Command {
 
 impl Validate for Command {
     fn validate(&self) -> Result<(), crate::InternalError> {
+        match self.label.as_str() {
+            "begin" => return Err(crate::InternalError::BeginCommand),
+            "end" => return Err(crate::InternalError::EndCommand),
+            _ => {}
+        }
+
         if self.label.len() != 1 {
             for c in self.label.chars() {
                 if matches!(c, '\\' | '%')
@@ -126,5 +119,18 @@ impl Lines for Command {
         }
 
         total + 1
+    }
+}
+
+impl From<ast3::Command> for Command {
+    fn from(value: ast3::Command) -> Self {
+        let (label, arguments) = value.decompose();
+        Command::new_unchecked(
+            label,
+            arguments
+                .into_iter()
+                .map(|(s, sc)| (s, sc.into()))
+                .collect(),
+        )
     }
 }
