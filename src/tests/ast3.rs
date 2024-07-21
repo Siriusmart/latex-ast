@@ -76,7 +76,7 @@ world$$
             ast3::Chunk::new(3, ast3::ChunkVariant::ParagraphBreak("\n\n".to_string())).unwrap(),
         ],
         Some("article".to_string()),
-        HashMap::default(),
+        Vec::default(),
         vec![
             Chunk::new(1, ast3::ChunkVariant::Text("\n    Hello\n    ".to_string())).unwrap(),
             Chunk::new(

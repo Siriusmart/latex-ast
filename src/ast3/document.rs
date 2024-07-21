@@ -17,7 +17,8 @@ use super::{Chunk, ChunkVariant, Command, Scope};
 #[cfg_attr(feature = "eq", derive(PartialEq, Eq))]
 pub struct Document {
     documentclass: Option<String>,
-    documentoptions: HashMap<String, Option<String>>,
+    // prec, key, (equal prec, equal post, val), post
+    documentoptions: Vec<(String, String, Option<(String, String, String)>, String)>,
 
     preamable: Vec<Chunk>,
 
@@ -70,7 +71,7 @@ impl Document {
     pub fn new(
         preamable: Vec<Chunk>,
         documentclass: Option<String>,
-        documentoptions: HashMap<String, Option<String>>,
+        documentoptions: Vec<(String, String, Option<(String, String, String)>, String)>,
         body: Vec<Chunk>,
         body_args: Vec<(String, Scope)>,
         body_begin_prec: String,
@@ -96,7 +97,7 @@ impl Document {
     pub fn new_unchecked(
         preamable: Vec<Chunk>,
         documentclass: Option<String>,
-        documentoptions: HashMap<String, Option<String>>,
+        documentoptions: Vec<(String, String, Option<(String, String, String)>, String)>,
         body: Vec<Chunk>,
         body_args: Vec<(String, Scope)>,
         body_begin_prec: String,
@@ -246,7 +247,7 @@ impl Document {
         self,
     ) -> (
         Option<String>,
-        HashMap<String, Option<String>>,
+        Vec<(String, String, Option<(String, String, String)>, String)>,
         Vec<Chunk>,
         Vec<Chunk>,
         Vec<(String, Scope)>,
@@ -324,15 +325,97 @@ impl TryFrom<ast2::Document> for Document {
                                     .to_string()
                                     .split(',')
                                 {
-                                    if let Some((k, v)) = opt.split_once('=') {
-                                        construct.documentoptions.insert(
-                                            k.trim().to_string(),
-                                            Some(v.trim().to_string()),
-                                        );
+                                    let mut prec = String::new();
+                                    let mut arg = String::new();
+                                    let mut post = String::new();
+
+                                    enum BufferMode {
+                                        Prec,
+                                        Arg,
+                                        PotentialPost,
+                                    }
+
+                                    let mut buffer = String::new();
+                                    let mut buffermode = BufferMode::Prec;
+
+                                    for c in opt.chars() {
+                                        match buffermode {
+                                            BufferMode::Prec if c.is_whitespace() => buffer.push(c),
+                                            BufferMode::Prec => {
+                                                prec.push_str(&buffer);
+                                                buffer.clear();
+                                                buffermode = BufferMode::Arg;
+                                            }
+                                            BufferMode::Arg if !c.is_whitespace() => arg.push(c),
+                                            BufferMode::Arg => {
+                                                buffer.push(c);
+                                                buffermode = BufferMode::PotentialPost;
+                                            }
+                                            BufferMode::PotentialPost if c.is_whitespace() => {
+                                                buffer.push(c)
+                                            }
+                                            BufferMode::PotentialPost => {
+                                                arg.push_str(&buffer);
+                                                arg.push(c);
+                                                buffer.clear();
+                                                buffermode = BufferMode::Arg;
+                                            }
+                                        }
+                                    }
+
+                                    if !buffer.is_empty() {
+                                        post = buffer;
+                                    }
+
+                                    if let Some((k, v)) = arg.split_once('=') {
+                                        let mut key = String::new();
+                                        let mut val = String::new();
+                                        let mut equal_prec = String::new();
+                                        let mut equal_post = String::new();
+
+                                        {
+                                            let mut buffer = String::new();
+
+                                            for c in k.chars() {
+                                                if c.is_whitespace() {
+                                                    buffer.push(c)
+                                                } else {
+                                                    if !buffer.is_empty() {
+                                                        key.push_str(&buffer);
+                                                        buffer.clear();
+                                                    }
+                                                    key.push(c)
+                                                }
+                                            }
+
+                                            if !buffer.is_empty() {
+                                                equal_prec = buffer;
+                                            }
+                                        }
+
+                                        {
+                                            let mut val_started = false;
+
+                                            for c in k.chars() {
+                                                if c.is_whitespace() && !val_started {
+                                                    equal_post.push(c)
+                                                } else {
+                                                    if val_started {
+                                                        val_started = true;
+                                                    }
+
+                                                    val.push(c)
+                                                }
+                                            }
+                                        }
+                                        construct.documentoptions.push((
+                                            prec,
+                                            key,
+                                            Some((equal_prec, equal_post, val)),
+                                            post,
+                                        ));
                                     } else {
-                                        construct
-                                            .documentoptions
-                                            .insert(opt.trim().to_string(), None);
+                                        construct.documentoptions.push((prec, arg, None, post));
                                     }
                                 }
                             }

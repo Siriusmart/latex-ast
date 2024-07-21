@@ -6,6 +6,11 @@ Planned stages of AST are
 
 - [x] Stage 1: document ➡ vector of chunks
 - [x] Stage 2: stage 1 ➡ environment-based AST
-- [ ] Stage 3: stage 2 ➡ handles paragraphs and inline maths
+- [x] Stage 3: stage 2 ➡ handles paragraphs and inline maths
+- [ ] Stage 4: stage 3 ➡ handling commands and environments depending on type
+
+Missing sanitisation checks for line numbers for constructing individual chunks.
+
+TODO: Add document option/document class to `Document` when new chunks are pushed.
 
 License: AGPL-3.0-or-later
